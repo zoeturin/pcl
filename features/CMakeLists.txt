@@ -20,6 +20,7 @@ set(incs
   "include/pcl/${SUBSYS_NAME}/board.h"
   "include/pcl/${SUBSYS_NAME}/flare.h"
   "include/pcl/${SUBSYS_NAME}/brisk_2d.h"
+  "include/pcl/${SUBSYS_NAME}/cgf.h"
   "include/pcl/${SUBSYS_NAME}/cppf.h"
   "include/pcl/${SUBSYS_NAME}/cvfh.h"
   "include/pcl/${SUBSYS_NAME}/our_cvfh.h"
@@ -73,6 +74,7 @@ set(impl_incs
   "include/pcl/${SUBSYS_NAME}/impl/board.hpp"
   "include/pcl/${SUBSYS_NAME}/impl/flare.hpp"
   "include/pcl/${SUBSYS_NAME}/impl/brisk_2d.hpp"
+  "include/pcl/${SUBSYS_NAME}/impl/cgf.hpp"
   "include/pcl/${SUBSYS_NAME}/impl/cppf.hpp"
   "include/pcl/${SUBSYS_NAME}/impl/cvfh.hpp"
   "include/pcl/${SUBSYS_NAME}/impl/our_cvfh.hpp"
@@ -124,6 +126,7 @@ set(srcs
   src/flare.cpp
   src/brisk_2d.cpp
   src/boundary.cpp
+  src/cgf.cpp
   src/cppf.cpp
   src/cvfh.cpp
   src/our_cvfh.cpp

@@ -108,7 +108,8 @@
   (pcl::SHOT1344)               \
   (pcl::PointUV)                \
   (pcl::ReferenceFrame)         \
-  (pcl::PointDEM)
+  (pcl::PointDEM)               \
+  (pcl::CGFSignature16)
 
 // Define all point types that include RGB data
 #define PCL_RGB_POINT_TYPES     \
@@ -170,7 +171,8 @@
   (pcl::GRSDSignature21)        \
   (pcl::ESFSignature640)        \
   (pcl::BRISKSignature512)      \
-  (pcl::Narf36)
+  (pcl::Narf36)                 \
+  (pcl::CGFSignature16)
 
 // Define all point types that have descriptorSize() member function
 #define PCL_DESCRIPTOR_FEATURE_POINT_TYPES \
@@ -211,8 +213,8 @@ namespace pcl
       template<> struct descriptorSize<GASDSignature7992> { static constexpr const int value = 7992; };
       template<> struct descriptorSize<GFPFHSignature16> { static constexpr const int value = 16; };
       template<> struct descriptorSize<Narf36> { static constexpr const int value = 36; };
+      template<> struct descriptorSize<CGFSignature16> { static constexpr const int value = 16; };
       template<int N> struct descriptorSize<Histogram<N>> { static constexpr const int value = N; };
-
 
       template<typename FeaturePointT>
       static constexpr int descriptorSize_v = descriptorSize<FeaturePointT>::value;
@@ -1718,6 +1720,20 @@ namespace pcl
       x (_x), y (_y), z (_z), roll (_roll), pitch (_pitch), yaw (_yaw) {}
 
     friend std::ostream& operator << (std::ostream& os, const Narf36& p);
+  };
+
+  PCL_EXPORTS std::ostream& operator << (std::ostream& os, const CGFSignature16& p);
+  /** \brief A point structure representing the Compact Geometric Feature Descriptor.
+    * \ingroup common
+    */
+  struct CGFSignature16
+  {
+    float histogram[16] = {0.f};
+    static constexpr int descriptorSize () { return detail::traits::descriptorSize_v<CGFSignature16>; }
+
+    inline CGFSignature16 () = default;
+
+    friend std::ostream& operator << (std::ostream& os, const CGFSignature16& p);
   };
 
   PCL_EXPORTS std::ostream& operator << (std::ostream& os, const BorderDescription& p);

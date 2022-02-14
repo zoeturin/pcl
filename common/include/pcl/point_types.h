@@ -301,6 +301,11 @@ namespace pcl
      */
   struct Narf36;
 
+  /** \brief Members: float histogram[16]
+     * \ingroup common
+     */
+  struct CGFSignature16;
+
   /** \brief Data type to store extended information about a transition from foreground to backgroundSpecification of the fields for BorderDescription::traits.
     * \ingroup common
     */
