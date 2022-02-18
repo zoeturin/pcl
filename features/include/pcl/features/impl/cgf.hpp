@@ -1,6 +1,5 @@
 #pragma once
 #include <pcl/features/cgf.h>
-#include <Eigen>
 
 //////////////////////////////////// LRF Tools ////////////////////////////////////
 // Modify computeCovarianceMatrix to accept weights
@@ -231,4 +230,48 @@ pcl::CGFEstimation<PointInT, PointOutT>::computeFeature(PointCloudOut& output)
 }
 
 
+//////////////////////////////////// I/O for weights/biases ////////////////////////////////////
+pcl::CGFEstimation<PointInT, PointOutT>::MatrixXd readMatrices(string file_str, int num_layers)
+{
+    vector<Eigen::MatrixXf> matrices; // make shared ptr?
+    vector<Eigen::MatrixXf> matrices; // make shared ptr?
+
+    VectorXf matrix;
+ 
+    // in this object we store the data from the matrix
+    ifstream fileStream(file_str);
+ 
+    // this variable is used to store the row of the matrix that contains commas 
+    string rowString;
+
+    string elem;
+ 
+    int colIdx = 0;
+    int rowIdx = 0;
+    int count = 0;
+ 
+    
+    while (getline(fileStream, rowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
+    {
+
+        stringstream rowStream(rowString); //convert matrixRowString that is a string to a stream variable.
+
+        colIdx = 0;
+        while (getline(rowStream, elem, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
+        {
+            matrix(rowIdx, colIdx) = stof(elem);
+            colIdx++;
+        }
+        rowIdx++; //update the column numbers
+        if (colIdx != 0)
+        {
+            // TODO
+            // assign ptr to newly completed matrix or vec
+            // reset temp ptr
+        }
+
+    }
+ 
+
+}
 
