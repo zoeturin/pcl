@@ -25,7 +25,7 @@ namespace pcl
     using PointCloudOut = typename Feature<PointInT, PointOutT>::PointCloudOut;
 
     // Constructors:
-    CGF(int az_div, int el_div, int rad_div) :
+    CGF(int az_div, int el_div, int rad_div, string file) :
       //az_div_(), el_div(), rad_div_()//, cloud_diam_ () 
     {
       // Histogram stuff:
@@ -35,6 +35,9 @@ namespace pcl
       radiusThresholds();
       int N = az_div * el_div * rad_div;
       sph_hist_ = Eigen::Zero(N);
+
+      // Compression stuff:
+      
 
       feature_name_ = "CGFEstimation";
     };
@@ -62,7 +65,7 @@ namespace pcl
     //   el_div_ = el_div;
     //   rad_div_ = rad_div;
     //   // TODO: new sph_hist_ of correct size
-    // }d
+    // }
 
     void 
       setFeatureWeights(); // TODO
@@ -96,12 +99,15 @@ namespace pcl
       getBin(PointInT pt);
 
     void
-      computeSphericalHistogram();
+      computeSphericalHistogram(const PointInT &pt, PointCloud<PointInT> &nn_cloud);
 
     //////////////////////////////////// Feature Computation ////////////////////////////////////
 
+    void 
+      computeSignature();
+
     void
-      computeCGFSignature(PointInT pt);
+      computeCGFSignature(const PointInT &pt, PointCloud<PointInT> &nn_cloud);
       
     /** \brief Estimate the set of all CGF (Compact Geometric Feature) signatures for the input cloud
       *

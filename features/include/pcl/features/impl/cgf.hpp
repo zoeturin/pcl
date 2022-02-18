@@ -154,8 +154,9 @@ pcl::CGFEstimation<PointInT, PointOutT>::getBin(PointInT pt)
 
 // CGF member function definitions for feature computation:
 template <typename PointInT, typename PointOutT> void
-pcl::CGFEstimation<PointInT, PointOutT>::computeSphericalHistogram()
+pcl::CGFEstimation<PointInT, PointOutT>::computeSphericalHistogram(const PointInT &pt, PointCloud<PointInT> &nn_cloud)
 {
+  // UNSURE: if better to pass in outputs by reference and modify, or just modify class member variables
   // Initialization
   int idx;
   sph_hist_.setZero();
@@ -163,9 +164,8 @@ pcl::CGFEstimation<PointInT, PointOutT>::computeSphericalHistogram()
   // Transform neighbors (q) to have relative positions q - pt
   transformation_.setIdentity();
   transformation_.translation() << -pt.x, -pt.y, -pt.z;
-  // nn_cloud_.reset(); // UNSURE if necessary before copyPointCloud, don't think so?  
-  copyPointCloud(cloud, nn_indices_, nn_cloud_);
-  transformPointCloud (*cloud, *nn_cloud_, transformation_);
+  
+  transformPointCloud (nn_cloud, nn_cloud, transformation_);
 
   // Local RF
   localRF();
@@ -174,30 +174,29 @@ pcl::CGFEstimation<PointInT, PointOutT>::computeSphericalHistogram()
   transformation_.setIdentity();
   transformation_.matrix() = eig_;
   transformation_.inverse();
-  transformPointCloud (*cloud, *nn_cloud_, transformation_);
+  transformPointCloud (nn_cloud, nn_cloud, transformation_);
   
   // iterate through points and increment bins
-  for (std::size_t idx = 0; idx < nn_indices_ -> size(); idx++) 
+  for (std::size_t idx = 0; idx < nn_cloud -> size(); idx++) 
   {
     // get bin index
-    idx = getBin();
+    idx = getBin(nn_cloud[idx]);
     sph_hist_(idx) ++;
   }
-
 }
 
 //////////////////////////////////// Feature Computation ////////////////////////////////////
 
 template <typename PointInT, typename PointOutT> void
-pcl::CGFEstimation<PointInT, PointOutT>::computeCGFSignature(PointInT pt)
+pcl::CGFEstimation<PointInT, PointOutT>::computeCGFSignature(const PointInT &pt, PointCloud<PointInT> &nn_cloud)
 {
   // TODO
 
   // Compute spherical histogram
-  computeSphericalHistogram();
+  computeSphericalHistogram(pt, nn_cloud);
 
   // Compress histogram using learned weights 
-
+  computeSignature();
 }
 
 template <typename PointInT, typename PointOutT> void
@@ -205,21 +204,22 @@ pcl::CGFEstimation<PointInT, PointOutT>::computeCGFSignatures()
 {
   // iterate through input cloud
   // Iterate over the entire index vector
-    for (std::size_t idx = 0; idx < indices_->size (); ++idx) 
+  for (std::size_t idx = 0; idx < indices_->size (); ++idx) 
+  {
+    // NN range search 
+    // UNSURE if nn_indices_ and nn_dists_ properly reset by calls to searchForNeighbors
+    if (this->searchForNeighbors (idx, search_parameter_, nn_indices_, nn_dists_) < 5) // fewer than 5 neighbors: can't make feature, // UNSURE: increase?
     {
-      // NN range search 
-      // UNSURE if nn_indices_ and nn_dists_ properly reset by calls to searchForNeighbors
-      if (this->searchForNeighbors (index, search_parameter_, nn_indices_, nn_dists_) < 5) // fewer than 5 neighbors: can't make feature, // UNSURE: increase?
-        {
-          for (Eigen::Index d = 0; d < sph_hist_.size (); ++d)
-            output_[idx].histogram[d] = std::numeric_limits<float>::quiet_NaN ();
+      for (Eigen::Index d = 0; d < sph_hist_.size (); ++d)
+        output_[idx].histogram[d] = std::numeric_limits<float>::quiet_NaN ();
 
-          output_.is_dense = false;
-          continue;
-        }
-      nn_cloud_ = 
-      computeCGFSignature();
+      output_.is_dense = false;
+      continue;
     }
+    // nn_cloud_.reset(); // UNSURE if necessary before copyPointCloud, don't think so?  
+    copyPointCloud(cloud, nn_indices_, nn_cloud_);
+    computeCGFSignature(input_[idx], nn_cloud_);
+  }
   
 }
 
