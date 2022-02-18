@@ -3,9 +3,90 @@
 //  #define PCL_FEATURES_CGF_H_
 #pragma once
 #include <pcl/features/feature.h>
-
+#include <iostream>
+#include<Eigen/Dense>
+#include<fstream>
+#include <vector>
+#include <stdexcept>
+     
 namespace pcl
 {
+  class Layer
+{
+    public:
+        Layer();
+
+        Layer(Eigen::MatrixXf weights, Eigen::VectorXf biases, float (*activation)(float) )
+        {
+            // Layer(); // UNSURE: call default constructor here?
+            setWeightsAndBiases(weights, biases);
+        }
+
+        void
+        setWeightsAndBiases(Eigen::MatrixXf weights, Eigen::VectorXf biases) // UNSURE: pass by reference?
+        {
+            if (weights.rows() != biases.size())
+                throw std::invalid_argument ("Weight matrix must have same number of rows as bias vector");
+            weights_ = weights;
+            biases_ = biases;
+        }
+
+        void
+        getWeightsAndBiases(Eigen::MatrixXf &weights, Eigen::VectorXf &biases)
+        {
+            weights = weights_;
+            biases = biases_;
+        }
+
+        // void
+        // setActivation(std::function<float (float)> activation, string name) 
+        // {   
+        //     activation_name_ = name;
+        //     activation_ = activation;
+        // }
+
+        // TODO: get activation
+
+        void 
+        applyLayer(Eigen::VectorXf &input) // UNSURE: inline?
+        {
+            input = (weights_ * input + biases_).unaryExpr(std::ref(activation_));;
+        }
+
+        // TODO: add typical activation functions
+
+        void
+        set_activation_relu(float slope)
+        {
+            activation_name_ = "relu";
+            activation_ = [slope] (float x) -> float {return x>0 ? x*slope : 0;}; 
+        }
+
+    protected:
+        Eigen::MatrixXf weights_;
+        Eigen::VectorXf biases_;
+        std::function<float (float)> activation_; 
+        string activation_name_;
+};
+
+class NeuralNetwork
+{
+    public:
+
+    NeuralNetwork() 
+    {
+        // TODO
+    }
+    void 
+        applyNN(); // TODO
+
+    protected:
+        int num_layers;
+        int input_size;
+        int layer_size;
+        int output_size;
+        Layer layers[];
+};
   template<typename PointInT, typename PointOutT>
   class CGFEstimation : public Feature<PointInT, PointOutT>
   {
@@ -23,6 +104,9 @@ namespace pcl
     using PointCloudIn = pcl::PointCloud<PointInT>;
     using PointCloudInPtr = typename PointCloudIn::Ptr;
     using PointCloudOut = typename Feature<PointInT, PointOutT>::PointCloudOut;
+
+    void 
+      MatrixXd readMatrices(string file_str, int num_layers);
 
     // Constructors:
     CGF(int az_div, int el_div, int rad_div, string file) :
