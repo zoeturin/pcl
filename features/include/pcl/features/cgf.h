@@ -1,6 +1,4 @@
 
-//  #ifndef PCL_FEATURES_CGF_H_
-//  #define PCL_FEATURES_CGF_H_
 #pragma once
 #include <pcl/features/feature.h>
 #include <iostream>
@@ -12,81 +10,118 @@
 namespace pcl
 {
   class Layer
-{
+  {
     public:
-        Layer();
+      Layer();
 
-        Layer(Eigen::MatrixXf weights, Eigen::VectorXf biases, float (*activation)(float) )
-        {
-            // Layer(); // UNSURE: call default constructor here?
-            setWeightsAndBiases(weights, biases);
-        }
+      Layer(Eigen::MatrixXf weights, Eigen::VectorXf biases)
+      {
+        setWeightsAndBiases(weights, biases);
+        set_activation_relu(float 1.0); // LATER: make possible to set from constructor
+      }
 
-        void
-        setWeightsAndBiases(Eigen::MatrixXf weights, Eigen::VectorXf biases) // UNSURE: pass by reference?
-        {
-            if (weights.rows() != biases.size())
-                throw std::invalid_argument ("Weight matrix must have same number of rows as bias vector");
-            weights_ = weights;
-            biases_ = biases;
-        }
+      void
+      setWeightsAndBiases(Eigen::MatrixXf &weights, Eigen::VectorXf &biases) 
+      {
+        if (weights.rows() != biases.size())
+            throw std::invalid_argument ("Weight matrix must have same number of rows as bias vector");
+        weights_ = weights; 
+        biases_ = biases;
+        input_size_ = weights.cols();
+        output_size_ = weights.rows();
+      }
 
-        void
-        getWeightsAndBiases(Eigen::MatrixXf &weights, Eigen::VectorXf &biases)
-        {
-            weights = weights_;
-            biases = biases_;
-        }
+      void
+      getWeightsAndBiases(Eigen::MatrixXf &weights, Eigen::VectorXf &biases)
+      {
+        weights = weights_; // ??: transfer ownership...?
+        biases = biases_;
+      }
 
-        // void
-        // setActivation(std::function<float (float)> activation, string name) 
-        // {   
-        //     activation_name_ = name;
-        //     activation_ = activation;
-        // }
+      int inputSize()
+      {
+        return input_size_;
+      }
 
-        // TODO: get activation
+      int outputSize()
+      {
+        return output_size_;
+      }
 
-        void 
-        applyLayer(Eigen::VectorXf &input) // UNSURE: inline?
-        {
-            input = (weights_ * input + biases_).unaryExpr(std::ref(activation_));;
-        }
+      // void
+      // setActivation(std::function<float (float)> activation, string name) 
+      // {   
+      //     activation_name_ = name;
+      //     activation_ = activation;
+      // }
 
-        // TODO: add typical activation functions
+      // LATER: get activation
 
-        void
-        set_activation_relu(float slope)
-        {
-            activation_name_ = "relu";
-            activation_ = [slope] (float x) -> float {return x>0 ? x*slope : 0;}; 
-        }
+      void 
+      applyLayer(Eigen::VectorXf &input) // ??: inline?
+      {
+        input = (weights_ * input + biases_).unaryExpr(std::ref(activation_));
+      }
 
-    protected:
+      // LATER: add typical activation functions
+
+      void
+      set_activation_relu(float slope)
+      {
+        activation_name_ = "relu";
+        activation_ = [slope] (float x) -> float {return x>0 ? x*slope : 0;}; 
+      }
+
+      private:
+        int input_size_;
+        int output_size_;
         Eigen::MatrixXf weights_;
         Eigen::VectorXf biases_;
         std::function<float (float)> activation_; 
         string activation_name_;
-};
+  };
 
-class NeuralNetwork
-{
+  class NeuralNetwork
+  {
     public:
-
-    NeuralNetwork() 
+    // ??: want vector of shared pointers instead? not sure what Eigen does internally in terms of copying/assignment
+    NeuralNetwork(const vector<Eigen::MatrixXf>& weights, const vector<Eigen::MatrixXf>& biases) 
     {
-        // TODO
+      if (weights.size() != biases.size()) throw std::invalid_argument ("Must have same number of weight matrices as bias vectors");
+      num_layers_ = weights.size();
+      for (int i = 0; i < num_layers; i++)
+      {
+        layers_.push_back(Layer(weights[i], biases[i]));
+        layer_sizes_.push_back(layers_.back().outputSize()); 
+        if (i>0 && layers_[i-1].outputSize() != layers_[i].inputSize()) // LATER: move this code block elsewhere, eg through custom error type?
+        {
+          std::ostringstream err_stream;
+          err_stream << "Output size of layer " << i-1 << " (" << layers_[i-1].outputSize() << " )";
+          err_stream << " does not match input size of layer " << i << " (" << layers_[i].inputSize() << " )";
+          throw std::invalid_argument (err_stream.str());
+        }
+      }
+      input_size_ = layers.front().inputSize();
+      output_size_ = layers.back().outputSize();
     }
-    void 
-        applyNN(); // TODO
 
-    protected:
-        int num_layers;
-        int input_size;
-        int layer_size;
-        int output_size;
-        Layer layers[];
-};
+    void 
+      applyNN(&input) // TODO // NEXT
+      {
+        for (int i = 0; i < num_layers_; i++)
+        {
+          layers_[i].applyLayer(input); // ?? do something clever here with preallocated layer outputs or something?
+        }
+      }
+
+    private:
+      int num_layers_;
+      int input_size_;
+      int output_size_;
+      vector<int> layer_sizes_; // vector of output sizes of each layer
+      vector<Layer> layers_;
+  };
+
   template<typename PointInT, typename PointOutT>
   class CGFEstimation : public Feature<PointInT, PointOutT>
   {
@@ -231,4 +266,3 @@ class NeuralNetwork
   };
 }
 
-//  #endif // PCL_FEATURES_CGF_H_
