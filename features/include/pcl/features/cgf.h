@@ -2,10 +2,11 @@
 #pragma once
 #include <pcl/features/feature.h>
 #include <iostream>
-#include<Eigen/Dense>
-#include<fstream>
+#include <Eigen/Dense>
+#include <fstream>
 #include <vector>
 #include <stdexcept>
+#include <string>
      
 namespace pcl
 {
@@ -17,7 +18,7 @@ namespace pcl
       Layer(Eigen::MatrixXf weights, Eigen::VectorXf biases)
       {
         setWeightsAndBiases(weights, biases);
-        set_activation_relu(float 1.0); // LATER: make possible to set from constructor
+        set_activation_relu(1.0); // LATER: make possible to set from constructor
       }
 
       void
@@ -78,18 +79,18 @@ namespace pcl
         Eigen::MatrixXf weights_;
         Eigen::VectorXf biases_;
         std::function<float (float)> activation_; 
-        string activation_name_;
+        std::string activation_name_;
   };
 
   class NeuralNetwork
   {
     public:
     // ??: want vector of shared pointers instead? not sure what Eigen does internally in terms of copying/assignment
-    NeuralNetwork(const vector<Eigen::MatrixXf>& weights, const vector<Eigen::MatrixXf>& biases) 
+    NeuralNetwork(const std::vector<Eigen::MatrixXf>& weights, const std::vector<Eigen::MatrixXf>& biases) 
     {
       if (weights.size() != biases.size()) throw std::invalid_argument ("Must have same number of weight matrices as bias vectors");
       num_layers_ = weights.size();
-      for (int i = 0; i < num_layers; i++)
+      for (int i = 0; i < num_layers_; i++)
       {
         layers_.push_back(Layer(weights[i], biases[i]));
         layer_sizes_.push_back(layers_.back().outputSize()); 
@@ -101,12 +102,12 @@ namespace pcl
           throw std::invalid_argument (err_stream.str());
         }
       }
-      input_size_ = layers.front().inputSize();
-      output_size_ = layers.back().outputSize();
+      input_size_ = layers_.front().inputSize();
+      output_size_ = layers_.back().outputSize();
     }
 
     void 
-      applyNN(&input) // TODO // NEXT
+      applyNN(Eigen::VectorXf& input) // TODO // NEXT
       {
         for (int i = 0; i < num_layers_; i++)
         {
@@ -118,8 +119,8 @@ namespace pcl
       int num_layers_;
       int input_size_;
       int output_size_;
-      vector<int> layer_sizes_; // vector of output sizes of each layer
-      vector<Layer> layers_;
+      std::vector<int> layer_sizes_; // vector of output sizes of each layer
+      std::vector<Layer> layers_;
   };
 
   template<typename PointInT, typename PointOutT>
@@ -221,6 +222,8 @@ namespace pcl
       computeSphericalHistogram(const PointInT &pt, PointCloud<PointInT> &nn_cloud);
 
     //////////////////////////////////// Feature Computation ////////////////////////////////////
+    void
+      readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str);
 
     void 
       computeSignature();
@@ -249,7 +252,7 @@ namespace pcl
     const Eigen::VectorXf rad_thresholds_;
     float rmin_, rmax_; // TODO: set
 
-    Eigen::VectorXi sph_hist_;
+    Eigen::VectorXf sph_hist_;
     Eigen::Matrix3f cov_;
     Eigen::Matrix3f eig_;
 

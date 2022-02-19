@@ -232,7 +232,7 @@ pcl::CGFEstimation<PointInT, PointOutT>::computeFeature(PointCloudOut& output)
 
 //////////////////////////////////// I/O for weights/biases ////////////////////////////////////
 template <typename PointInT, typename PointOutT> void
-pcl::CGFEstimation<PointInT, PointOutT>::readMatrices(vector<Eigen::MatrixXf>& weights, vector<Eigen::MatrixXf>& biases, string file_str)
+pcl::CGFEstimation<PointInT, PointOutT>::readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str)
 {
   // ??: should weights and biases vectors be passed via pointer instead?
   // ??: should these be vectors of pointers instead?
