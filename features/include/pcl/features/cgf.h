@@ -58,10 +58,11 @@ namespace pcl
 
       // LATER: get activation
 
-      void 
-      applyLayer(Eigen::VectorXf &input) // ??: inline?
+      Eigen::VectorXf 
+      applyLayer(const Eigen::VectorXf &input) // ??: inline?
       {
-        input = (weights_ * input + biases_).unaryExpr(std::ref(activation_));
+        output_ = (weights_ * input + biases_).unaryExpr(std::ref(activation_));
+        return output_; // ?? is this bad practice?
       }
 
       // LATER: add typical activation functions
@@ -73,9 +74,16 @@ namespace pcl
         activation_ = [slope] (float x) -> float {return x>0 ? x*slope : 0;}; 
       }
 
+      // void
+      // getOutput(Eigen::VectorXf &output)
+      // {
+      //   output_ = output;
+      // }
+
       private:
         int input_size_;
         int output_size_;
+        Eigen::VectorXf output_;
         Eigen::MatrixXf weights_;
         Eigen::VectorXf biases_;
         std::function<float (float)> activation_; 
@@ -107,12 +115,20 @@ namespace pcl
     }
 
     void 
-      applyNN(Eigen::VectorXf& input) // TODO // NEXT
+      applyNN(const Eigen::VectorXf& input, Eigen::VectorXf& output)
       {
+        const Eigen::VectorXf *temp = &input; // ?? having this as const might cause issues with assigning output/casting to non-const?
         for (int i = 0; i < num_layers_; i++)
         {
-          layers_[i].applyLayer(input); // ?? do something clever here with preallocated layer outputs or something?
+          temp = & layers_[i].applyLayer(*temp); // ?? idk what I'm doing
         }
+        output = *temp;
+      }
+
+    int 
+      getOutputSize() 
+      {
+        return output_size_;
       }
 
     private:
@@ -144,9 +160,9 @@ namespace pcl
     void 
       MatrixXd readMatrices(string file_str, int num_layers);
 
-    // Constructors:
-    CGF(int az_div, int el_div, int rad_div, string file) :
-      //az_div_(), el_div(), rad_div_()//, cloud_diam_ () 
+    //////////////////////////////////// Constructors ////////////////////////////////////
+
+    CGF(int az_div, int el_div, int rad_div, std::string file_str) :
     {
       // Histogram stuff:
       az_div_ = az_div;
@@ -157,19 +173,16 @@ namespace pcl
       sph_hist_ = Eigen::Zero(N);
 
       // Compression stuff:
-      
+      setCompression(std::string file_str);
 
       feature_name_ = "CGFEstimation";
-    };
-
-    // Computation member function declarations
-    void
-      computeSphericalHistogram(std::size_t index, PointCloudOut &output); // TODO: params
+    };  
 
     void
-      computeCGFSignature(); // TODO: params
+      readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str);
 
-      // Define getters and setters:
+    //////////////////////////////////// Getters and Setters ////////////////////////////////////
+
     inline void
       getHistogramDivisions(int az_div, int el_div, int rad_div)
     {
@@ -188,7 +201,20 @@ namespace pcl
     // }
 
     void 
-      setFeatureWeights(); // TODO
+      setCompression(std::string file_str)
+      {
+        std::vector<Eigen::MatrixXf> weights;
+        std::vector<Eigen::MatrixXf> biases;
+        readMatrices(&weights, biases, file_str);
+        compression_ = NeuralNetwork(weights, biases);
+        if compression_.getOutputSize() != PointOutT.descriptorSize() 
+        {
+          std::ostringstream err_stream;
+          err_stream << "Output size of neural network ( " << compression_.getOutputSize() << " )";
+          err_stream << " does not match dimensionality of feature ( " << PointOutT.descriptorSize() << " )";
+          throw std::invalid_argument (err_stream.str());
+        }
+      }
 
   protected:
     
@@ -222,11 +248,6 @@ namespace pcl
       computeSphericalHistogram(const PointInT &pt, PointCloud<PointInT> &nn_cloud);
 
     //////////////////////////////////// Feature Computation ////////////////////////////////////
-    void
-      readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str);
-
-    void 
-      computeSignature();
 
     void
       computeCGFSignature(const PointInT &pt, PointCloud<PointInT> &nn_cloud);
@@ -240,13 +261,9 @@ namespace pcl
     void
       computeFeature(PointCloudOut& output) override;
 
-    // for（int i = 0； i < cornerCloud->points.size(); i++）{
-    //     // clear current feature
-    //     computeCGF(cornerCloud->points[i], currentFeature);
-    //     featureCloud->push_back(currentFeature);
-    // }
 
-    //////////////////////////////////// Members ////////////////////////////////////
+    //////////////////////////////////// Member Variables ////////////////////////////////////
+
     // Histogram parameters:
     const int az_div_, el_div_, rad_div_;
     const Eigen::VectorXf rad_thresholds_;
@@ -262,8 +279,7 @@ namespace pcl
     Eigen::Affine3f transformation_;
     pcl::PointCloud<pcl::PointInT>::Ptr nn_cloud_;
 
-
-    
+    pcl::NeuralNetwork compression_;
 
     PointCloudOut output_;
   };

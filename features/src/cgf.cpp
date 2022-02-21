@@ -3,5 +3,5 @@
  #include <pcl/features/cgf.h>
  #include <pcl/features/impl/cgf.hpp>
 
-PCL_INSTANTIATE(CGF, PCL_XYZ_POINT_TYPES);
+PCL_INSTANTIATE(CGFEstimation, PCL_XYZ_POINT_TYPES);
 
