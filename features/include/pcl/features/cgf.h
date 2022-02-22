@@ -1,5 +1,6 @@
 
 #pragma once
+#define PCL_NO_PRECOMPILE
 #include <pcl/features/feature.h>
 #include <iostream>
 #include <Eigen/Dense>

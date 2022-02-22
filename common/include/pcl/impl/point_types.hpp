@@ -2257,6 +2257,10 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (pcl::GFPFHSignature16,
     (float[16], histogram, gfpfh)
 )
 
+POINT_CLOUD_REGISTER_POINT_STRUCT (pcl::CGFSignature16,
+    (float[16], histogram, cgf)
+)
+
 POINT_CLOUD_REGISTER_POINT_STRUCT (pcl::IntensityGradient,
     (float, gradient_x, gradient_x)
     (float, gradient_y, gradient_y)
