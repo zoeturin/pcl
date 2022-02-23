@@ -5,6 +5,7 @@
 #include <pcl/common/impl/io.hpp> // need for copyPointCloud()
 #include <pcl/common/impl/transforms.hpp> // need for transformPointCloud()
 #include <pcl/common/centroid.h> // demeanPointCloud()
+#include <pcl/common/eigen.h> // eigen33()
 #include <iostream>
 #include <Eigen/Dense>
 #include <fstream>
@@ -186,7 +187,7 @@ namespace pcl
       rad_div_ = rad_div;
       radiusThresholds();
       int N = az_div * el_div * rad_div;
-      sph_hist_ = Eigen::MatrixXf::Zero(N);
+      sph_hist_ = Eigen::VectorXf::Zero(N);
 
       // Compression stuff:
       setCompression(file_str);

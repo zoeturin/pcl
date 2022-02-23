@@ -21,42 +21,16 @@ namespace pcl {
     std::size_t point_count;
     
     // If the data is dense, we don't need to check for NaN
-    if (cloud.is_dense)
-    {
+    // if (cloud.is_dense)
+    // {
       point_count = static_cast<unsigned> (cloud.size ());
       // For each point in the cloud
       for (int idx = 0; idx < size; idx++)
       {
-        Eigen::Vector<Scalar, 4> pt;
-        pt[0] = cloud[idx].x - centroid[0];
-        pt[1] = cloud[idx].y - centroid[1];
-        pt[2] = cloud[idx].z - centroid[2];
-
-        covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx);
-        covariance_matrix(1, 2) += pt.y() * pt.z() * weights(idx);
-        covariance_matrix(2, 2) += pt.z() * pt.z() * weights(idx);
-
-        pt *= pt.x();
-        covariance_matrix(0, 0) += pt.x() * weights(idx);
-        covariance_matrix(0, 1) += pt.y() * weights(idx);
-        covariance_matrix(0, 2) += pt.z() * weights(idx);
-      }
-    }
-    // NaN or Inf values could exist => check for them
-    else // shouldn't be the case for CGF usage // ?? does it really save anything *not* to check for NaN? ie why have 2 cases for dense/not dense
-    {
-      point_count = 0;
-      // For each point in the cloud
-      for (int idx = 0; idx < size; idx++)
-      {
-        // Check if the point is invalid
-        if (!isFinite(cloud[index]))
-          continue;
-
         Eigen::Matrix<Scalar, 4, 1> pt;
-        pt[0] = cloud[index].x - centroid[0];
-        pt[1] = cloud[index].y - centroid[1];
-        pt[2] = cloud[index].z - centroid[2];
+        pt[0] = cloud.points[idx].x - centroid[0];
+        pt[1] = cloud.points[idx].y - centroid[1];
+        pt[2] = cloud.points[idx].z - centroid[2];
 
         covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx);
         covariance_matrix(1, 2) += pt.y() * pt.z() * weights(idx);
@@ -66,9 +40,35 @@ namespace pcl {
         covariance_matrix(0, 0) += pt.x() * weights(idx);
         covariance_matrix(0, 1) += pt.y() * weights(idx);
         covariance_matrix(0, 2) += pt.z() * weights(idx);
-        ++point_count;
       }
-    }
+    // }
+    // NaN or Inf values could exist => check for them
+    // else // shouldn't be the case for CGF usage // ?? does it really save anything *not* to check for NaN? ie why have 2 cases for dense/not dense
+    // { // LATER: add back if/else block once if block works
+    //   point_count = 0;
+    //   // For each point in the cloud
+    //   for (int idx = 0; idx < size; idx++)
+    //   {
+    //     // Check if the point is invalid
+    //     if (!isFinite(cloud[index]))
+    //       continue;
+
+    //     Eigen::Matrix<Scalar, 4, 1> pt;
+    //     pt[0] = cloud.points[index].x - centroid[0];
+    //     pt[1] = cloud.points[index].y - centroid[1];
+    //     pt[2] = cloud.points[index].z - centroid[2];
+
+    //     covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx);
+    //     covariance_matrix(1, 2) += pt.y() * pt.z() * weights(idx);
+    //     covariance_matrix(2, 2) += pt.z() * pt.z() * weights(idx);
+
+    //     pt *= pt.x();
+    //     covariance_matrix(0, 0) += pt.x() * weights(idx);
+    //     covariance_matrix(0, 1) += pt.y() * weights(idx);
+    //     covariance_matrix(0, 2) += pt.z() * weights(idx);
+    //     ++point_count;
+    //   }
+    // }
     covariance_matrix(1, 0) = covariance_matrix(0, 1);
     covariance_matrix(2, 0) = covariance_matrix(0, 2);
     covariance_matrix(2, 1) = covariance_matrix(1, 2);
@@ -86,12 +86,13 @@ namespace pcl {
   pcl::CGFEstimation<PointInT, PointOutT>::localRF(PointCloud<PointInT>& nn_cloud)
   {
     // Get weighted covariance of neighboring points
-    Eigen::VectorXf weights = search_radius_ - Eigen::Map<Eigen::VectorXf>(&nn_dists_, sizeof(nn_dists_)); // FIX
+    // float* ptr_data = &nn_dists_[0];
+    // Eigen::VectorXf v2 = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(v1.data(), v1.size());
+    Eigen::VectorXf weights = search_radius_ - Eigen::Map<Eigen::ArrayXf>(nn_dists_.data(), sizeof(nn_dists_)); // FIX
     computeWeightedCovarianceMatrix<PointInT, float>(nn_cloud, Eigen::Vector4f::Zero(), cov_, weights);
     // Get eigenvectors of weighted covariance matrix
-    EIGEN_ALIGN16 Eigen::Vector3f::Scalar eigen_value;
-    // EIGEN_ALIGN16 Eigen::Vector3f eigen_vector;
-    pcl::eigen33(cov_, eigen_value, eig_); // eigenvales in increasing order
+    Eigen::Vector3f eigen_value;
+    pcl::eigen33(cov_, eig_, eigen_value); // eigenvales in increasing order
     eig_.colwise().reverseInPlace(); // want eigenvectors in order of decreasing eigenvalues
     disambiguateRF(eig_);
   }
@@ -176,7 +177,7 @@ namespace pcl {
 
     // Transform neighboring points into LRF
     transformation_.setIdentity();
-    transformation_.matrix() = eig_;
+    transformation_.linear() = eig_;
     transformation_.inverse();
     transformPointCloud(nn_cloud, nn_cloud, transformation_);
 
@@ -199,7 +200,7 @@ namespace pcl {
     computeSphericalHistogram(pt, nn_cloud);
 
     // Compress histogram using learned weights 
-    compression_.applyNN(sph_hist_, signature_); //FIX
+    compression_.applyNN(sph_hist_, signature_);
   }
 
   template <typename PointInT, typename PointOutT> void
@@ -221,9 +222,10 @@ namespace pcl {
       }
       // nn_cloud_.reset(); // ?? necessary before copyPointCloud? don't think so?  
       copyPointCloud(*input_, nn_indices_, nn_cloud_);
-      computeCGFSignature(input_->points[idx], nn_cloud_); // FIX
-      Eigen::VectorXf::Map(&output_[idx].histogram, signature_.size()) = signature_; // FIX // convert Eigen::VectorXf to C array float [] // ?? is histogram here preallocated?
-      // output_[idx].histogram = *(signature_.rows());
+      computeCGFSignature(input_->points[idx], nn_cloud_);
+      // Eigen::VectorXf::Map(&output_[idx].histogram, signature_.size()) = signature_; // FIX // convert Eigen::VectorXf to C array float [] // ?? is histogram here preallocated?
+      std::copy(signature_.data(), signature_.data() + signature_.size(), output_[idx].histogram);
+      // output_[idx].histogram = signature_.data();
     }
 
   }
@@ -251,7 +253,7 @@ namespace pcl {
     int colIdx = 0;
     int rowIdx = 0;
 
-    // FIX: not very robust, depends on whitespace, etc; assumes matrices have more than one row, biases don't
+    // LATER: not very robust, depends on whitespace, etc; assumes matrices have more than one row, biases don't
     while (getline(fileStream, rowString)) // for each line of file:
     {
 
