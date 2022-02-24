@@ -182,7 +182,7 @@ namespace pcl
                       rRF_ (0.0)
     {} // ?? need empty constructor for PCL API?
 
-    CGFEstimation(int az_div, int el_div, int rad_div, std::string file_str)
+    CGFEstimation(int az_div, int el_div, int rad_div)
     {
       // Histogram stuff:
       az_div_ = az_div;
@@ -196,9 +196,6 @@ namespace pcl
       // search_radius_ = rmax_; // ?? not sure I'm using inheritance properly for search stuff
       int N = az_div * el_div * rad_div;
       sph_hist_ = Eigen::VectorXf::Zero(N);
-
-      // Compression stuff:
-      setCompression(file_str);
 
       //Other: 
       feature_name_ = "CGFEstimation";
@@ -304,7 +301,6 @@ namespace pcl
     // Histogram parameters:
     uint az_div_, el_div_, rad_div_;
     Eigen::VectorXf rad_thresholds_;
-    // NEXT: fix nn search
     // LATER: make setter for rRF_, rmin_, rmax_
     float rmin_, rmax_; // bin range for radius, rmax_ sets nearest neighbor search range for histogram, paper: [1.5%, 17%] or [.1m, 1.2m] // TODO: set
     float rRF_; // nearest neighbor radius for LRF generation, paper: 2% of model or .25 m for LIDAR
