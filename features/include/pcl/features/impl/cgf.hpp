@@ -4,77 +4,44 @@
 
 namespace pcl {
   //////////////////////////////////// LRF Tools ////////////////////////////////////
-  // Modify computeCovarianceMatrix to accept weights
+  // Modified computeCovarianceMatrix to accept weights
   // Could use class VectorAverage instead, currently only supports centroid automatically calculated as mean of points
-  template <typename PointT, typename Scalar> inline unsigned int
-    computeWeightedCovarianceMatrix(const pcl::PointCloud<PointT>& cloud,
-      const Eigen::Matrix<Scalar, 4, 1>& centroid,
-      Eigen::Matrix<Scalar, 3, 3>& covariance_matrix,
+  template <typename PointInT, typename PointOutT> unsigned int
+  pcl::CGFEstimation<PointInT, PointOutT>::computeWeightedCovarianceMatrix(
+      const pcl::PointCloud<PointInT>& cloud,
+      const Indices& indices,
+      Eigen::Matrix3f& covariance_matrix,
       const Eigen::VectorXf& weights)
   {
-    int size = cloud.size();
-    if (cloud.empty ()) // shouldn't get here if empty
-     return (0);
-
     // Initialize to 0
     covariance_matrix.setZero();
 
     std::size_t point_count;
     
-    // If the data is dense, we don't need to check for NaN
-    // if (cloud.is_dense)
-    // {
-      point_count = static_cast<unsigned> (cloud.size ());
-      // For each point in the cloud
-      for (int idx = 0; idx < size; idx++)
-      {
-        Eigen::Matrix<Scalar, 4, 1> pt;
-        pt[0] = cloud.points[idx].x - centroid[0];
-        pt[1] = cloud.points[idx].y - centroid[1];
-        pt[2] = cloud.points[idx].z - centroid[2];
+    point_count = static_cast<unsigned> (indices.size ());
+    // For each point in the cloud
+    for (auto idx : indices)
+    {
+      Eigen::Vector4f pt;
+      pt[0] = cloud.points[idx].x; //- centroid[0];
+      pt[1] = cloud.points[idx].y; //- centroid[1];
+      pt[2] = cloud.points[idx].z; //- centroid[2];
 
-        covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx);
-        covariance_matrix(1, 2) += pt.y() * pt.z() * weights(idx);
-        covariance_matrix(2, 2) += pt.z() * pt.z() * weights(idx);
+      covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx);
+      covariance_matrix(1, 2) += pt.y() * pt.z() * weights(idx);
+      covariance_matrix(2, 2) += pt.z() * pt.z() * weights(idx);
 
-        pt *= pt.x();
-        covariance_matrix(0, 0) += pt.x() * weights(idx);
-        covariance_matrix(0, 1) += pt.y() * weights(idx);
-        covariance_matrix(0, 2) += pt.z() * weights(idx);
-      }
-    // }
-    // NaN or Inf values could exist => check for them
-    // else // shouldn't be the case for CGF usage // ?? does it really save anything *not* to check for NaN? ie why have 2 cases for dense/not dense
-    // { // LATER: add back if/else block once if block works
-    //   point_count = 0;
-    //   // For each point in the cloud
-    //   for (int idx = 0; idx < size; idx++)
-    //   {
-    //     // Check if the point is invalid
-    //     if (!isFinite(cloud[index]))
-    //       continue;
+      pt *= pt.x();
+      covariance_matrix(0, 0) += pt.x() * weights(idx);
+      covariance_matrix(0, 1) += pt.y() * weights(idx);
+      covariance_matrix(0, 2) += pt.z() * weights(idx);
+    }
 
-    //     Eigen::Matrix<Scalar, 4, 1> pt;
-    //     pt[0] = cloud.points[index].x - centroid[0];
-    //     pt[1] = cloud.points[index].y - centroid[1];
-    //     pt[2] = cloud.points[index].z - centroid[2];
-
-    //     covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx);
-    //     covariance_matrix(1, 2) += pt.y() * pt.z() * weights(idx);
-    //     covariance_matrix(2, 2) += pt.z() * pt.z() * weights(idx);
-
-    //     pt *= pt.x();
-    //     covariance_matrix(0, 0) += pt.x() * weights(idx);
-    //     covariance_matrix(0, 1) += pt.y() * weights(idx);
-    //     covariance_matrix(0, 2) += pt.z() * weights(idx);
-    //     ++point_count;
-    //   }
-    // }
     covariance_matrix(1, 0) = covariance_matrix(0, 1);
     covariance_matrix(2, 0) = covariance_matrix(0, 2);
     covariance_matrix(2, 1) = covariance_matrix(1, 2);
     covariance_matrix /= point_count; // normalize
-    return (static_cast<unsigned int> (point_count));
+    return point_count;
   }
 
   template <typename PointInT, typename PointOutT> void
@@ -84,13 +51,14 @@ namespace pcl {
   }
 
   template <typename PointInT, typename PointOutT> void
-  pcl::CGFEstimation<PointInT, PointOutT>::localRF(PointCloud<PointInT>& nn_cloud)
+  pcl::CGFEstimation<PointInT, PointOutT>::localRF(PointCloud<PointInT>& nn_cloud, std::vector<int> nn_indices_RF, std::vector<float>& nn_dists_RF, float radius)
   {
+    // Limit points used to given radius
+    
     // Get weighted covariance of neighboring points
-    // float* ptr_data = &nn_dists_[0];
-    // Eigen::VectorXf v2 = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(v1.data(), v1.size());
-    Eigen::VectorXf weights = search_radius_ - Eigen::Map<Eigen::ArrayXf>(nn_dists_.data(), sizeof(nn_dists_)); // FIX
-    computeWeightedCovarianceMatrix<PointInT, float>(nn_cloud, Eigen::Vector4f::Zero(), cov_, weights);
+    // LATER: make this more efficient? rather than alloc new VectorXf, could loop over nn_dists and modify
+    Eigen::VectorXf weights = radius - Eigen::Map<Eigen::ArrayXf>(nn_dists_RF.data(), sizeof(nn_dists_RF)); // Assume nn_distsRF is same length as indices
+    computeWeightedCovarianceMatrix(nn_cloud, nn_indices_RF, cov_, weights);
     // Get eigenvectors of weighted covariance matrix
     Eigen::Vector3f eigen_value;
     pcl::eigen33(cov_, eig_, eigen_value); // eigenvales in increasing order
@@ -168,13 +136,11 @@ namespace pcl {
     // Transform neighbors (q) to have relative positions q - pt
     // transformation_.setIdentity();
     // transformation_.translation() << -pt.x, -pt.y, -pt.z;
-
-    // transformPointCloud(nn_cloud, nn_cloud, transformation_);
     Eigen::Vector4f pt_vec {pt.x, pt.y, pt.z, 0.};
     demeanPointCloud(nn_cloud, pt_vec, nn_cloud); // can pass in any pt as "centroid"; ?? ok to have input same as output? (eg allocating?)
 
     // Local RF
-    localRF(nn_cloud);
+    localRF(nn_cloud, nn_indices_RF_, nn_dists_RF_, rRF_);
 
     // Transform neighboring points into LRF
     transformation_.setIdentity();
@@ -213,10 +179,17 @@ namespace pcl {
     {
       // NN range search 
       // ?? if nn_indices_ and nn_dists_ properly reset by calls to searchForNeighbors
-      if (this->searchForNeighbors(idx, search_parameter_, nn_indices_, nn_dists_) < 5) // fewer than 5 neighbors: can't make feature, // ??: increase?
+      // ?? can you prevent nn_dists_ output/allocation? don't think it's needed
+      this->searchForNeighbors(idx, rmax_, nn_indices_, nn_dists_); // do NN search for histogram generation (range search <rmax_)
+
+      // this->setIndices(nn_indices_); // want to limit second NN search to neighbors since rRF_ < rmax_ // CHECK if this needs to be reset to all pts at some point
+      // ?? I think it's more efficient to run second NN search like this rather than finding all dists < rRF_ and using these indices? maybe only true if below true
+      // LATER: try to make this more efficient by only searching over smaller nn_cloud_ ? possibly would need to add idx to nn_cloud_ which might screw with some downstream stuff (eg RF generation) unless searchForNeighbors overloaded for point (rather than idx) input
+
+      if (this->searchForNeighbors(idx, rRF_, nn_indices_RF_, nn_dists_RF_) < 5) // fewer than 5 neighbors: can't make feature, // ??: increase?
       {
         for (Eigen::Index d = 0; d < sph_hist_.size(); ++d)
-          output_[idx].histogram[d] = std::numeric_limits<float>::quiet_NaN();
+          output_.points[idx].histogram[d] = std::numeric_limits<float>::quiet_NaN();
 
         output_.is_dense = false;
         continue;

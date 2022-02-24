@@ -162,7 +162,7 @@ namespace pcl
     using Feature<PointInT, PointOutT>::getClassName;
     using Feature<PointInT, PointOutT>::indices_;
     using Feature<PointInT, PointOutT>::search_radius_;
-    using Feature<PointInT, PointOutT>::search_parameter_;
+    // using Feature<PointInT, PointOutT>::search_parameter_;
     using Feature<PointInT, PointOutT>::input_;
     using Feature<PointInT, PointOutT>::surface_;
 
@@ -171,12 +171,15 @@ namespace pcl
     using PointCloudOut = typename Feature<PointInT, PointOutT>::PointCloudOut;
 
     //////////////////////////////////// Constructors ////////////////////////////////////
+    // LATER: make SphericalHistogram its own class?
 
+    /** \brief Empty constructor. */
     CGFEstimation (): az_div_ (0), // ?? set members to zero so can check that they're properly set later?
                       el_div_ (0), // TODO: add checks to ensure CGFEstimation has been properly initialized
                       rad_div_ (0),
                       rmin_ (0.0),
-                      rmax_ (0.0)                                 
+                      rmax_ (0.0),
+                      rRF_ (0.0)
     {} // ?? need empty constructor for PCL API?
 
     CGFEstimation(int az_div, int el_div, int rad_div, std::string file_str)
@@ -186,6 +189,11 @@ namespace pcl
       el_div_ = el_div;
       rad_div_ = rad_div;
       radiusThresholds();
+
+      rmin_ = .1;
+      rmax_ = 1.2;
+      rRF_ = .25;
+      // search_radius_ = rmax_; // ?? not sure I'm using inheritance properly for search stuff
       int N = az_div * el_div * rad_div;
       sph_hist_ = Eigen::VectorXf::Zero(N);
 
@@ -237,11 +245,19 @@ namespace pcl
   protected:
 
     //////////////////////////////////// Local Reference Functions ////////////////////////////////////
+
+    unsigned int
+      computeWeightedCovarianceMatrix(
+      const pcl::PointCloud<PointInT>& cloud,
+      const Indices& indices,
+      Eigen::Matrix3f& covariance_matrix,
+      const Eigen::VectorXf& weights);
+
     void
       disambiguateRF(Eigen::Matrix3f& eig);
 
     void
-      localRF(PointCloud<PointInT>& nn_cloud);
+      localRF(PointCloud<PointInT>& nn_cloud, std::vector<int> nn_indices_RF, std::vector<float>& nn_dists_RF, float radius);
 
     //////////////////////////////////// Histogram Functions ////////////////////////////////////
     inline float
@@ -289,14 +305,17 @@ namespace pcl
     uint az_div_, el_div_, rad_div_;
     Eigen::VectorXf rad_thresholds_;
     // NEXT: fix nn search
-    float radius_RF_; // nearest neighbor radius for LRF generation //TODO 
-    float rmin_, rmax_; // bin range for radius, rmax_ sets nearest neighbor search range for histogram // TODO: set
-
+    // LATER: make setter for rRF_, rmin_, rmax_
+    float rmin_, rmax_; // bin range for radius, rmax_ sets nearest neighbor search range for histogram, paper: [1.5%, 17%] or [.1m, 1.2m] // TODO: set
+    float rRF_; // nearest neighbor radius for LRF generation, paper: 2% of model or .25 m for LIDAR
+    // TODO: add check for rRF_ < rmax_
     Eigen::VectorXf sph_hist_;
 
     // Nearest neighbor temp storage
     std::vector<int> nn_indices_;
     std::vector<float> nn_dists_;
+    std::vector<int> nn_indices_RF_;
+    std::vector<float> nn_dists_RF_;
     PointCloudIn nn_cloud_;
 
     // Point cloud transformation and local RF stuff
