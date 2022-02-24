@@ -1,10 +1,11 @@
 #pragma once
 #include <pcl/features/cgf.h>
 
-//////////////////////////////////// LRF Tools ////////////////////////////////////
-// Modify computeCovarianceMatrix to accept weights
-// Could use class VectorAverage instead, currently only supports centroid automatically calculated as mean of points
+
 namespace pcl {
+  //////////////////////////////////// LRF Tools ////////////////////////////////////
+  // Modify computeCovarianceMatrix to accept weights
+  // Could use class VectorAverage instead, currently only supports centroid automatically calculated as mean of points
   template <typename PointT, typename Scalar> inline unsigned int
     computeWeightedCovarianceMatrix(const pcl::PointCloud<PointT>& cloud,
       const Eigen::Matrix<Scalar, 4, 1>& centroid,
@@ -223,9 +224,10 @@ namespace pcl {
       // nn_cloud_.reset(); // ?? necessary before copyPointCloud? don't think so?  
       copyPointCloud(*input_, nn_indices_, nn_cloud_);
       computeCGFSignature(input_->points[idx], nn_cloud_);
-      // Eigen::VectorXf::Map(&output_[idx].histogram, signature_.size()) = signature_; // FIX // convert Eigen::VectorXf to C array float [] // ?? is histogram here preallocated?
-      std::copy(signature_.data(), signature_.data() + signature_.size(), output_[idx].histogram);
-      // output_[idx].histogram = signature_.data();
+      std::copy(signature_.data(), signature_.data() + signature_.size(), output_.points[idx].histogram); // histogram is preallocated
+      output_.points[idx].x = input_->points[idx].x;
+      output_.points[idx].y = input_->points[idx].y;
+      output_.points[idx].z = input_->points[idx].z;
     }
 
   }

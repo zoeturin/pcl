@@ -133,7 +133,7 @@ namespace pcl
       for (int i = 0; i < num_layers_; i++)
       {
         layers_[i].applyLayer(*temp); // ?? idk what I'm doing
-        temp = layers_[i].getOutputPtr(); // ?? shared ptr instead? // FIX
+        temp = layers_[i].getOutputPtr(); // ?? shared ptr instead? 
       }
       output = *temp;
     }
@@ -173,7 +173,7 @@ namespace pcl
     //////////////////////////////////// Constructors ////////////////////////////////////
 
     CGFEstimation (): az_div_ (0), // ?? set members to zero so can check that they're properly set later?
-                      el_div_ (0),
+                      el_div_ (0), // TODO: add checks to ensure CGFEstimation has been properly initialized
                       rad_div_ (0),
                       rmin_ (0.0),
                       rmax_ (0.0)                                 
@@ -288,21 +288,25 @@ namespace pcl
     // Histogram parameters:
     uint az_div_, el_div_, rad_div_;
     Eigen::VectorXf rad_thresholds_;
-    float rmin_, rmax_; // TODO: set
+    // NEXT: fix nn search
+    float radius_RF_; // nearest neighbor radius for LRF generation //TODO 
+    float rmin_, rmax_; // bin range for radius, rmax_ sets nearest neighbor search range for histogram // TODO: set
 
     Eigen::VectorXf sph_hist_;
-    Eigen::Matrix3f cov_;
-    Eigen::Matrix3f eig_;
 
+    // Nearest neighbor temp storage
     std::vector<int> nn_indices_;
     std::vector<float> nn_dists_;
-
-    Eigen::Affine3f transformation_;
     PointCloudIn nn_cloud_;
 
+    // Point cloud transformation and local RF stuff
+    Eigen::Matrix3f cov_;
+    Eigen::Matrix3f eig_;
+    Eigen::Affine3f transformation_;
+    
+    // Neural network compression and results temp storage
     pcl::NeuralNetwork compression_;
     Eigen::VectorXf signature_;
-
     PointCloudOut output_;
   };
 }

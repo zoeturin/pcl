@@ -1728,6 +1728,7 @@ namespace pcl
     */
   struct CGFSignature16
   {
+    float x = 0.f, y = 0.f, z = 0.f;
     float histogram[16] = {0.f};
     static constexpr int descriptorSize () { return detail::traits::descriptorSize_v<CGFSignature16>; }
 

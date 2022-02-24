@@ -306,7 +306,7 @@ namespace pcl
      */
   struct CGFSignature16;
 
-  /** \brief Data type to store extended information about a transition from foreground to backgroundSpecification of the fields for BorderDescription::traits.
+  /** \brief Members: float x, y, z, float histogram[16]
     * \ingroup common
     */
   using BorderTraits = std::bitset<32>;
