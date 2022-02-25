@@ -215,11 +215,11 @@ namespace pcl {
 
   //////////////////////////////////// I/O for weights/biases ////////////////////////////////////
   template <typename PointInT, typename PointOutT> void
-  pcl::CGFEstimation<PointInT, PointOutT>::readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str)
+  pcl::CGFEstimation<PointInT, PointOutT>::readMatrices(std::vector<MatPtr>& weights, std::vector<MatPtr>& biases, std::string file_str)
   {
-    // ??: should weights and biases vectors be passed via pointer instead?
-    // ??: should these be vectors of pointers instead?
-    Eigen::MatrixXf matrix; // temporary matrix storage
+
+    MatPtr matrix( new Eigen::MatrixXf );
+    // Eigen::MatrixXf matrix; // temporary matrix storage
 
     std::ifstream fileStream(file_str);
     std::string rowString;
@@ -237,22 +237,25 @@ namespace pcl {
       while (getline(rowStream, elem, ',') && !elem.empty() ) // read elems of line, comma separated
       {
         // TODO: add try/catch
-        matrix(rowIdx, colIdx) = std::stof(elem);
+        matrix->(rowIdx, colIdx) = std::stof(elem);
         colIdx++;
       }
       
       if (colIdx == 0) // when reached the end of a matrix (line is whitespace)
       {
+        MatPtr new_ptr; // ?? ns issue?
+        new_ptr.( matrix ) // ?? want to transfer ownership of matrix to new ptr 
+
         if (rowIdx > 1)
         {
-          weights.push_back(matrix); // ??: moves matrix ownership in this case?
+          weights.push_back(new_ptr); // ??: moves matrix ownership in this case?
         }
         else{
-          biases.push_back(matrix);
+          biases.push_back(new_ptr);
         }
-        matrix = Eigen::MatrixXf::Zero(0,0); // ?? want to reset to size (0,0) dynamically allocated matrix
+        matrix.(new Eigen::MatrixXf); // ?? want to reset to size (0,0) dynamically allocated matrix
         rowIdx = 0;
-        std::cout << matrix;
+        // std::cout << matrix*;
       }
       else
       {

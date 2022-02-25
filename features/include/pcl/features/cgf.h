@@ -170,7 +170,7 @@ namespace pcl
     using PointCloudIn = pcl::PointCloud<PointInT>;
     using PointCloudInPtr = typename PointCloudIn::Ptr;
     using PointCloudOut = typename Feature<PointInT, PointOutT>::PointCloudOut;
-
+    using MatPtr = shared_ptr<Eigen::MatrixXf>;
     //////////////////////////////////// Constructors ////////////////////////////////////
     // LATER: make SphericalHistogram its own class?
 
@@ -203,7 +203,7 @@ namespace pcl
     }
 
     void
-      readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str);
+      readMatrices(std::vector<MatPtr>& weights, std::vector<MatPtr>& biases, std::string file_str);
 
     //////////////////////////////////// Getters and Setters ////////////////////////////////////
 
