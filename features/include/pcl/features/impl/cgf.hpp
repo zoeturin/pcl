@@ -228,14 +228,15 @@ namespace pcl {
     int colIdx = 0;
     int rowIdx = 0;
 
-    // LATER: not very robust, depends on whitespace, etc; assumes matrices have more than one row, biases don't
+    // LATER: make more robust, add support for tensorflow and/or julia models? currently: depends on whitespace, etc; assumes matrices have more than one row, biases don't
     while (getline(fileStream, rowString)) // for each line of file:
     {
 
       std::stringstream rowStream(rowString); 
       colIdx = 0;
-      while (getline(rowStream, elem, ',')) // read elems of line, comma separated
+      while (getline(rowStream, elem, ',') && !elem.empty() ) // read elems of line, comma separated
       {
+        // TODO: add try/catch
         matrix(rowIdx, colIdx) = std::stof(elem);
         colIdx++;
       }
@@ -251,6 +252,7 @@ namespace pcl {
         }
         matrix = Eigen::MatrixXf::Zero(0,0); // ?? want to reset to size (0,0) dynamically allocated matrix
         rowIdx = 0;
+        std::cout << matrix;
       }
       else
       {

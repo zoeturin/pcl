@@ -32,8 +32,8 @@ namespace pcl
     {
       if (weights.rows() != biases.size())
         throw std::invalid_argument("Weight matrix must have same number of rows as bias vector");
-      weights_ = weights;
-      biases_ = biases;
+      // weights_ = weights; // NEXT: fix segfault on assignment here
+      // biases_ = biases;
       input_size_ = weights.cols();
       output_size_ = weights.rows();
     }
@@ -106,7 +106,8 @@ namespace pcl
     NeuralNetwork() {} // ?? need default constructor that can be called by CGFEstimation default constructor?
 
     // ??: want vector of shared pointers instead? not sure what Eigen does internally in terms of copying/assignment
-    NeuralNetwork(const std::vector<Eigen::MatrixXf>& weights, const std::vector<Eigen::MatrixXf>& biases)
+    void
+    setWeightsAndBiases(const std::vector<Eigen::MatrixXf>& weights, const std::vector<Eigen::MatrixXf>& biases)
     {
       if (weights.size() != biases.size()) throw std::invalid_argument("Must have same number of weight matrices as bias vectors");
       num_layers_ = weights.size();
@@ -229,15 +230,22 @@ namespace pcl
       std::vector<Eigen::MatrixXf> weights;
       std::vector<Eigen::MatrixXf> biases;
       readMatrices(weights, biases, file_str);
-      compression_ = NeuralNetwork(weights, biases);
-      if (compression_.getOutputSize() != PointOutT::descriptorSize())
-      {
-        std::ostringstream err_stream;
-        err_stream << "Output size of neural network ( " << compression_.getOutputSize() << " )";
-        err_stream << " does not match dimensionality of feature ( " << PointOutT::descriptorSize() << " )";
-        throw std::invalid_argument(err_stream.str());
-      }
+
+      // compression_.setWeightsAndBiases(weights, biases);
+      // if (compression_.getOutputSize() != PointOutT::descriptorSize())
+      // {
+      //   std::ostringstream err_stream;
+      //   err_stream << "Output size of neural network ( " << compression_.getOutputSize() << " )";
+      //   err_stream << " does not match dimensionality of feature ( " << PointOutT::descriptorSize() << " )";
+      //   throw std::invalid_argument(err_stream.str());
+      // }
     }
+
+    NeuralNetwork
+      getCompression()
+      {
+        return compression_;
+      }
 
   protected:
 
