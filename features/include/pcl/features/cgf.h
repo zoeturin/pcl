@@ -21,28 +21,33 @@ namespace pcl
   public:
     Layer() {} // ?? need default constructor that can be called by CGFEstimation default constructor? (via NeuralNetwork default constructor)
 
-    Layer(Eigen::MatrixXf weights, Eigen::VectorXf biases)
+    Layer(const shared_ptr<Eigen::MatrixXf>& weights, const shared_ptr<Eigen::MatrixXf>& biases)
     {
+      std::cout<< "layer constructor\n";
       setWeightsAndBiases(weights, biases);
       set_activation_relu(1.0); // LATER: make possible to set from constructor
     }
 
     void
-      setWeightsAndBiases(Eigen::MatrixXf& weights, Eigen::VectorXf& biases)
+      setWeightsAndBiases(const shared_ptr<Eigen::MatrixXf>& weights, const shared_ptr<Eigen::MatrixXf>& biases)
     {
-      if (weights.rows() != biases.size())
+
+      if (weights->rows() != biases->size())
         throw std::invalid_argument("Weight matrix must have same number of rows as bias vector");
-      // weights_ = weights; // NEXT: fix segfault on assignment here
-      // biases_ = biases;
-      input_size_ = weights.cols();
-      output_size_ = weights.rows();
-    }
+      std::cout << "set weights \n";
+      // std::cout << weights;
+      weights_ = move(weights); 
+      biases_ = move(biases);
+      input_size_ = weights->cols();
+      output_size_ = weights->rows();
+      std::cout << "finished setting layer\n";
+      }
 
     void
-      getWeightsAndBiases(Eigen::MatrixXf& weights, Eigen::VectorXf& biases)
+      getWeightsAndBiases(Eigen::MatrixXf weights, Eigen::MatrixXf biases)
     {
-      weights = weights_; // ??: transfer ownership...?
-      biases = biases_;
+      weights = *weights_; // ??: transfer ownership...?
+      biases = *biases_;
     }
 
     int inputSize()
@@ -67,7 +72,10 @@ namespace pcl
     void
       applyLayer(const Eigen::VectorXf& input) // ??: inline?
     {
-      output_ = (weights_ * input + biases_).unaryExpr(std::ref(activation_));
+      std::cout << "trying to apply layer \n" << input << "input\n";
+      // NEXT: bias vector should be transposed
+      output_ = (*weights_ * input + *biases_).unaryExpr(std::ref(activation_));
+      std::cout << "applied layer " << *biases_  << '\n';
     }
 
     // LATER: add other typical activation functions
@@ -94,8 +102,8 @@ namespace pcl
     int input_size_;
     int output_size_;
     Eigen::VectorXf output_;
-    Eigen::MatrixXf weights_;
-    Eigen::VectorXf biases_;
+    std::shared_ptr<Eigen::MatrixXf> weights_;
+    std::shared_ptr<Eigen::MatrixXf> biases_;
     std::function<float(float)> activation_;
     std::string activation_name_;
   };
@@ -107,8 +115,9 @@ namespace pcl
 
     // ??: want vector of shared pointers instead? not sure what Eigen does internally in terms of copying/assignment
     void
-    setWeightsAndBiases(const std::vector<Eigen::MatrixXf>& weights, const std::vector<Eigen::MatrixXf>& biases)
+    setWeightsAndBiases(const std::vector<shared_ptr<Eigen::MatrixXf>>& weights, const std::vector<shared_ptr<Eigen::MatrixXf>>& biases)
     {
+      std::cout << "set\n";
       if (weights.size() != biases.size()) throw std::invalid_argument("Must have same number of weight matrices as bias vectors");
       num_layers_ = weights.size();
       for (int i = 0; i < num_layers_; i++)
@@ -145,12 +154,13 @@ namespace pcl
       return output_size_;
     }
 
+    std::vector<Layer> layers_;
   private:
     int num_layers_;
     int input_size_;
     int output_size_;
     std::vector<int> layer_sizes_; // vector of output sizes of each layer
-    std::vector<Layer> layers_;
+    
   };
 
   template<typename PointInT, typename PointOutT>
@@ -204,6 +214,7 @@ namespace pcl
 
     void
       readMatrices(std::vector<MatPtr>& weights, std::vector<MatPtr>& biases, std::string file_str);
+      // readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str);
 
     //////////////////////////////////// Getters and Setters ////////////////////////////////////
 
@@ -227,18 +238,21 @@ namespace pcl
     void
       setCompression(std::string file_str)
     {
-      std::vector<Eigen::MatrixXf> weights;
-      std::vector<Eigen::MatrixXf> biases;
+      // std::vector<Eigen::MatrixXf> weights;
+      // std::vector<Eigen::MatrixXf> biases;
+      std::vector<MatPtr> weights;
+      std::vector<MatPtr> biases;
       readMatrices(weights, biases, file_str);
 
-      // compression_.setWeightsAndBiases(weights, biases);
-      // if (compression_.getOutputSize() != PointOutT::descriptorSize())
-      // {
-      //   std::ostringstream err_stream;
-      //   err_stream << "Output size of neural network ( " << compression_.getOutputSize() << " )";
-      //   err_stream << " does not match dimensionality of feature ( " << PointOutT::descriptorSize() << " )";
-      //   throw std::invalid_argument(err_stream.str());
-      // }
+      compression_.setWeightsAndBiases(weights, biases);
+      std::cout << "finished setting compression \n" ;
+      if (compression_.getOutputSize() != PointOutT::descriptorSize())
+      {
+        std::ostringstream err_stream;
+        err_stream << "Output size of neural network ( " << compression_.getOutputSize() << " )";
+        err_stream << " does not match dimensionality of feature ( " << PointOutT::descriptorSize() << " )";
+        throw std::invalid_argument(err_stream.str());
+      }
     }
 
     NeuralNetwork
@@ -259,7 +273,7 @@ namespace pcl
       const Eigen::VectorXf& weights);
 
     void
-      disambiguateRF(Eigen::Matrix3f& eig);
+      disambiguateRF();
 
     void
       localRF(PointCloud<PointInT>& nn_cloud, std::vector<int> nn_indices_RF, std::vector<float>& nn_dists_RF, float radius);

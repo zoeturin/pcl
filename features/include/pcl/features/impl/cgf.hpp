@@ -45,7 +45,7 @@ namespace pcl {
   }
 
   template <typename PointInT, typename PointOutT> void
-  pcl::CGFEstimation<PointInT, PointOutT>::disambiguateRF(Eigen::Matrix3f& eig)
+  pcl::CGFEstimation<PointInT, PointOutT>::disambiguateRF()
   {
     //TODO
   }
@@ -63,7 +63,7 @@ namespace pcl {
     Eigen::Vector3f eigen_value;
     pcl::eigen33(cov_, eig_, eigen_value); // eigenvales in increasing order
     eig_.colwise().reverseInPlace(); // want eigenvectors in order of decreasing eigenvalues
-    disambiguateRF(eig_);
+    disambiguateRF();
   }
 
   //////////////////////////////////// Histogram Tools ////////////////////////////////////
@@ -216,9 +216,10 @@ namespace pcl {
   //////////////////////////////////// I/O for weights/biases ////////////////////////////////////
   template <typename PointInT, typename PointOutT> void
   pcl::CGFEstimation<PointInT, PointOutT>::readMatrices(std::vector<MatPtr>& weights, std::vector<MatPtr>& biases, std::string file_str)
+  // pcl::CGFEstimation<PointInT, PointOutT>::readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str)
   {
 
-    MatPtr matrix( new Eigen::MatrixXf );
+    MatPtr matrix( new Eigen::MatrixXf (1,1));
     // Eigen::MatrixXf matrix; // temporary matrix storage
 
     std::ifstream fileStream(file_str);
@@ -227,34 +228,53 @@ namespace pcl {
 
     int colIdx = 0;
     int rowIdx = 0;
-
+    // std::cout << "reading matrices\n";
+    auto strip_whitespace = [] (std::string &str) -> bool { str.erase(std::remove_if(str.begin(), str.end(), ::isspace), str.end()); return true;};
     // LATER: make more robust, add support for tensorflow and/or julia models? currently: depends on whitespace, etc; assumes matrices have more than one row, biases don't
-    while (getline(fileStream, rowString)) // for each line of file:
-    {
+    
+    if (!fileStream.is_open()) {
+        std::cerr << "Could not open the file - '"
+             << file_str << "'" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
+    // std::cout << fileStream.eof();
+
+    while ( std::getline(fileStream, rowString) ) // for each line of file:
+    {
       std::stringstream rowStream(rowString); 
       colIdx = 0;
-      while (getline(rowStream, elem, ',') && !elem.empty() ) // read elems of line, comma separated
+
+      while (getline(rowStream, elem, ',') && strip_whitespace(elem) && !elem.empty()) // read elems of line, comma separated
       {
         // TODO: add try/catch
-        matrix->(rowIdx, colIdx) = std::stof(elem);
+
+        // matrix.conservativeResize(rowIdx+1, std::max(colIdx+1, (int) matrix.cols()));
+        matrix -> conservativeResize(rowIdx+1, std::max(colIdx+1, (int) matrix->cols()));
+        // matrix (rowIdx, colIdx) =  std::stof(elem);
+        (*matrix)(rowIdx, colIdx) =  std::stof(elem); // coeff doesn't perform range checking but due to resize should be guaranteed in range
+
         colIdx++;
       }
       
-      if (colIdx == 0) // when reached the end of a matrix (line is whitespace)
+      if (colIdx == 0 || fileStream.eof()) // when reached the end of a matrix (line is whitespace)
       {
-        MatPtr new_ptr; // ?? ns issue?
-        new_ptr.( matrix ) // ?? want to transfer ownership of matrix to new ptr 
+        // std::cout << "\n\nmatrix: \n" << matrix << "\n\n";
+        std::cout << "\n\nmatrix: \n" << *matrix << "\n\n";
+        MatPtr new_ptr = move(matrix); // want to transfer ownership of matrix to new ptr 
 
         if (rowIdx > 1)
         {
           weights.push_back(new_ptr); // ??: moves matrix ownership in this case?
+          // weights.push_back(matrix); // ??: moves matrix ownership in this case?
         }
         else{
           biases.push_back(new_ptr);
+          // biases.push_back(matrix.transpose()); 
         }
-        matrix.(new Eigen::MatrixXf); // ?? want to reset to size (0,0) dynamically allocated matrix
+        matrix = MatPtr(new Eigen::MatrixXf); // ?? want to reset to size (0,0) dynamically allocated matrix
         rowIdx = 0;
+        matrix->setZero(1,1);
         // std::cout << matrix*;
       }
       else

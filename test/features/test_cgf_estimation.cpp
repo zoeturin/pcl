@@ -1,4 +1,4 @@
-#include <pcl/test/gtest.h>
+// #include <pcl/test/gtest.h>
 #include <pcl/point_cloud.h>
 #include <pcl/features/feature.h>
 #include <pcl/features/cgf.h>
@@ -17,16 +17,28 @@ Indices indices;
 KdTreePtr tree;
 
 
-TEST (PCL, CGFEstimation)
+// TEST (PCL, CGFEstimation)
+int test()
 {
   std::cout << "\ntesting\n";
   CGFEstimation<PointInT, PointOutT> cgf_estimation = CGFEstimation<PointInT, PointOutT> (2,2,2);
   cgf_estimation.setInputCloud (cloud);
   PointCloud<PointOutT>::Ptr feature_cloud (new PointCloud<PointOutT> ());
-  // cgf_estimation.compute (*feature_cloud);
-  cgf_estimation.setCompression("NeuralNetwork_test.csv");
-  // cgf_estimation.getCompression().
   
+  // cgf_estimation.compute (*feature_cloud);
+  cgf_estimation.setCompression("/home/zoe/catkin_ws/src/pcl/test/features/NeuralNetwork_test.csv");
+
+  Eigen::VectorXf input;
+  input.setOnes(16);
+  std::cout << "input: " << input;
+  Eigen::VectorXf output(16);
+  cgf_estimation.getCompression().applyNN(input, output);
+
+  std::cout << "output: " << output << "\n";
+  // int sz = cgf_estimation.getCompression().layers_[0].inputSize();
+  // std::cout << sz;
+  // cgf_estimation.getCompression().
+  return 0;
 }
 
 
@@ -52,6 +64,7 @@ main (int argc, char** argv)
   tree.reset (new search::KdTree<PointXYZ> (false));
   tree->setInputCloud (cloud->makeShared ());
 
-  testing::InitGoogleTest (&argc, argv);
-  return (RUN_ALL_TESTS ());
+  return test();
+  // testing::InitGoogleTest (&argc, argv);
+  // return (RUN_ALL_TESTS ());
 }
