@@ -269,6 +269,7 @@ namespace pcl {
           // weights.push_back(matrix); // ??: moves matrix ownership in this case?
         }
         else{
+          new_ptr->transposeInPlace(); // LATER: enforce column vector
           biases.push_back(new_ptr);
           // biases.push_back(matrix.transpose()); 
         }

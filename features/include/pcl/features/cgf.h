@@ -31,7 +31,7 @@ namespace pcl
     void
       setWeightsAndBiases(const shared_ptr<Eigen::MatrixXf>& weights, const shared_ptr<Eigen::MatrixXf>& biases)
     {
-
+      // LATER: add check for bias being column vectors
       if (weights->rows() != biases->size())
         throw std::invalid_argument("Weight matrix must have same number of rows as bias vector");
       std::cout << "set weights \n";
@@ -72,10 +72,7 @@ namespace pcl
     void
       applyLayer(const Eigen::VectorXf& input) // ??: inline?
     {
-      std::cout << "trying to apply layer \n" << input << "input\n";
-      // NEXT: bias vector should be transposed
       output_ = (*weights_ * input + *biases_).unaryExpr(std::ref(activation_));
-      std::cout << "applied layer " << *biases_  << '\n';
     }
 
     // LATER: add other typical activation functions
