@@ -182,26 +182,29 @@ namespace pcl
     // LATER: make SphericalHistogram its own class?
 
     /** \brief Empty constructor. */
-    CGFEstimation (): az_div_ (0), // ?? set members to zero so can check that they're properly set later?
-                      el_div_ (0), // TODO: add checks to ensure CGFEstimation has been properly initialized
-                      rad_div_ (0),
-                      rmin_ (0.0),
-                      rmax_ (0.0),
-                      rRF_ (0.0)
-    {} // ?? need empty constructor for PCL API?
+    // CGFEstimation (): az_div_ (0), // ?? set members to zero so can check that they're properly set later?
+    //                   el_div_ (0), // TODO: add checks to ensure CGFEstimation has been properly initialized
+    //                   rad_div_ (0),
+    //                   rmin_ (0.0),
+    //                   rmax_ (0.0),
+    //                   rRF_ (0.0)
+    // {} // ?? need empty constructor for PCL API?
 
-    CGFEstimation(int az_div, int el_div, int rad_div)
+    CGFEstimation(int az_div, int el_div, int rad_div, float rmin =.1, float rmax = 1.2, float rRF = .25)
     {
       // Histogram stuff:
       az_div_ = az_div;
       el_div_ = el_div;
       rad_div_ = rad_div;
+      rmin_ = rmin;
+      rmax_ = rmax;
       radiusThresholds();
 
-      rmin_ = .1;
-      rmax_ = 1.2;
-      rRF_ = .25;
-      // search_radius_ = rmax_; // ?? not sure I'm using inheritance properly for search stuff
+      // std::cout << "rmax_: " << rmax_ << "\n" ;
+      // std::cout << "rmin_: " << rmin_ << "\n" ;
+      rRF_ = rRF;
+      this -> setRadiusSearch(rmax_); 
+
       int N = az_div * el_div * rad_div;
       sph_hist_ = Eigen::VectorXf::Zero(N);
 
@@ -258,8 +261,8 @@ namespace pcl
         return compression_;
       }
 
-  protected:
-
+  // protected: // TEMP
+    // TODO: change member functions to primarily act on member variables rather than inputs
     //////////////////////////////////// Local Reference Functions ////////////////////////////////////
 
     unsigned int
@@ -273,7 +276,7 @@ namespace pcl
       disambiguateRF();
 
     void
-      localRF(PointCloud<PointInT>& nn_cloud, std::vector<int> nn_indices_RF, std::vector<float>& nn_dists_RF, float radius);
+      localRF();
 
     //////////////////////////////////// Histogram Functions ////////////////////////////////////
     inline float
@@ -297,13 +300,16 @@ namespace pcl
     int
       getBin(PointInT pt);
 
+    int 
+      ORsearchForNeighbors(int idx, float radius, std::vector<int>& nn_indices, std::vector<float>& nn_dists); // TEMP fn for externally checking nearest neighbor search
+
     void
-      computeSphericalHistogram(const PointInT& pt, PointCloud<PointInT>& nn_cloud);
+      computeSphericalHistogram(const PointInT& pt);
 
     //////////////////////////////////// Feature Computation ////////////////////////////////////
 
     void
-      computeCGFSignature(const PointInT& pt, PointCloud<PointInT>& nn_cloud);
+      computeCGFSignature(const PointInT& pt);
 
     /** \brief Estimate the set of all CGF (Compact Geometric Feature) signatures for the input cloud
       *
@@ -335,7 +341,7 @@ namespace pcl
 
     // Point cloud transformation and local RF stuff
     Eigen::Matrix3f cov_;
-    Eigen::Matrix3f eig_;
+    Eigen::Matrix3f lrf_;
     Eigen::Affine3f transformation_;
     
     // Neural network compression and results temp storage
