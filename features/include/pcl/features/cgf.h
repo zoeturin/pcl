@@ -108,7 +108,7 @@ namespace pcl
   class NeuralNetwork
   {
   public:
-    NeuralNetwork() {} // ?? need default constructor that can be called by CGFEstimation default constructor?
+    NeuralNetwork() : initialized_ (false) {} // ?? need default constructor that can be called by CGFEstimation default constructor?
 
     // ??: want vector of shared pointers instead? not sure what Eigen does internally in terms of copying/assignment
     void
@@ -131,6 +131,7 @@ namespace pcl
       }
       input_size_ = layers_.front().inputSize();
       output_size_ = layers_.back().outputSize();
+      initialized_ = true;
     }
 
     void
@@ -151,13 +152,19 @@ namespace pcl
       return output_size_;
     }
 
+    bool 
+      initialized()
+      {
+        return initialized_;
+      }
+
     std::vector<Layer> layers_;
   private:
+    bool initialized_; // ?? restructure to use nullptr in CGFEstimation constructor for compression_ member and change NeuralNetwork constructor to take args?
     int num_layers_;
     int input_size_;
     int output_size_;
     std::vector<int> layer_sizes_; // vector of output sizes of each layer
-    
   };
 
   template<typename PointInT, typename PointOutT>
@@ -215,6 +222,12 @@ namespace pcl
     void
       readMatrices(std::vector<MatPtr>& weights, std::vector<MatPtr>& biases, std::string file_str);
       // readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str);
+
+    class UninitializedException : public std::logic_error { // ?? is this the "right" way to do this? lol
+      public:
+      UninitializedException() : std::logic_error("Uninitialized exception") { }
+      UninitializedException(std::string str) : std::logic_error(str) { }
+    };
 
     //////////////////////////////////// Getters and Setters ////////////////////////////////////
 

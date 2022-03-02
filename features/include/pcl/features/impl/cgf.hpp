@@ -96,20 +96,20 @@ namespace pcl {
   pcl::CGFEstimation<PointInT, PointOutT>::threshold(float val, const Eigen::VectorXf thresholds_vec)
   {
     int bin = 0;
-    while (val >= thresholds_vec(bin)) bin++; // ?? More efficient way to do this?
+    while (val >= thresholds_vec(bin) && bin < thresholds_vec.size()-1) bin++; // LATER More efficient way to do this?
     return bin;
   }
 
   template <typename PointInT, typename PointOutT> void
   pcl::CGFEstimation<PointInT, PointOutT>::radiusThresholds()
   {
-    std::cout << "rmax_: " << rmax_ << "\n" ;
-    std::cout << "rmin_: " << rmin_ << "\n" ;
+    // std::cout << "rmax_: " << rmax_ << "\n" ;
+    // std::cout << "rmin_: " << rmin_ << "\n" ;
     rad_thresholds_ = Eigen::VectorXf::LinSpaced(rad_div_, 0, rad_div_ - 1);
     // std::cout << "1: " << log(rmax_/rmin_) << "\n" ;
     // std::cout << "2: " << ( rad_thresholds_ / rad_div_ * log(rmax_ / rmin_) ).array() + log(rmin_) << "\n" ;
     rad_thresholds_ = exp( ( rad_thresholds_ / rad_div_ * log(rmax_ / rmin_) ).array() + log(rmin_));
-    std::cout << "rad_thresholds_: " << rad_thresholds_ << "\n" ;
+    // std::cout << "rad_thresholds_: " << rad_thresholds_ << "\n" ;
   }
 
   template <typename PointInT, typename PointOutT> int
@@ -126,9 +126,8 @@ namespace pcl {
     // radial bin
     float rad = radius(pt);
     int rad_bin = threshold(rad, rad_thresholds_);
-    // NEXT: fix radial binning
     
-    std::cout  << "rad: " << rad  << " rad_bin: " << rad_bin << "\n" ;
+    // std::cout  << "rad: " << rad  << " rad_bin: " << rad_bin << "\n" ;
     // vectorized bin // rad, az, el
     int vec_bin = rad_bin + az_bin * rad_div_ + el_bin * (rad_div_ * az_div_);
     return vec_bin;
@@ -171,7 +170,7 @@ namespace pcl {
     }
     std::cout << "sph_hist_: " << sph_hist_ << "\n" ;
     sph_hist_ /= float(nn_cloud_.size());
-    std::cout << "sph_hist_: " << sph_hist_ << "\n" ;
+    // std::cout << "sph_hist_: " << sph_hist_ << "\n" ;
 
   }
 
@@ -185,6 +184,7 @@ namespace pcl {
     std::cout << "sph_hist_: " << sph_hist_ << "\n" ;
 
     // Compress histogram using learned weights 
+    std::cout << "Applying Neural Network \n" ;
     compression_.applyNN(sph_hist_, signature_);
   }
 
@@ -218,6 +218,7 @@ namespace pcl {
 
       // ?? I think it's more efficient to run second NN search like this rather than finding all dists < rRF_ and using these indices? maybe only true if below true
       // LATER: try to make this more efficient by only searching over smaller nn_cloud_ ? possibly would need to add idx to nn_cloud_ which might screw with some downstream stuff (eg RF generation) unless searchForNeighbors overloaded for point (rather than idx) input
+      // TODO keep pt itself from being included in histogram (inf weight?)
       std::cout << "Second nearest neighbors search \n" ;
       if (this->searchForNeighbors(pt, rRF_, nn_indices_RF_, nn_dists_RF_) < 5) // fewer than 5 neighbors: can't make feature, // ??: increase?
       {
@@ -245,6 +246,8 @@ namespace pcl {
   template <typename PointInT, typename PointOutT> void
   pcl::CGFEstimation<PointInT, PointOutT>::computeFeature(PointCloudOut& output) // ?? need unused arg to override?
   {
+    if ( !compression_.initialized() )
+      throw UninitializedException("Compression weights and biases have not been set. Use setCompression() member function before feature computation.");
     std::cout << "Calling computeFeature \n" ;
     output_ = output;
     // std::cout << "init compute: \n" ;

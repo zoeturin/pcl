@@ -34,13 +34,13 @@ int test()
   std::cout << "cloud->size(): " << cloud->size() << "\n" ;
 
   // Create CGFEstimation object
-  CGFEstimation<PointInT, PointOutT> cgf_estimation (2,2,2, rmin, rmax, rRF);
+  CGFEstimation<PointInT, PointOutT> cgf_estimation (4,2,2, rmin, rmax, rRF);
   cgf_estimation.setInputCloud (cloud);
   PointCloud<PointOutT>::Ptr feature_cloud (new PointCloud<PointOutT> ());
   std::cout << "Created object \n" ;
   
   // Test NeuralNetwork
-  // cgf_estimation.setCompression("/home/zoe/catkin_ws/src/pcl/test/features/NeuralNetwork_test.csv");
+  cgf_estimation.setCompression("/home/zoe/catkin_ws/src/pcl/test/features/NeuralNetwork_test.csv");
   // Eigen::VectorXf input;
   // input.setOnes(16);
   // std::cout << "input: " << input;
