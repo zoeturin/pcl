@@ -234,11 +234,18 @@ namespace pcl {
       copyPointCloud(*input_, nn_indices_, nn_cloud_);
       std::cout << "Computing signature \n" ;
       computeCGFSignature(input_->points[pt]);
-      std::cout << "Copying histogram to output field \n" ;
+      std::cout << "Copying signature to output field \n" ;
       std::copy(signature_.data(), signature_.data() + signature_.size(), output_.points[idx].histogram); // histogram is preallocated
+      std::cout << "signature: \n" ;
+      // NEXT: fix output
+      for (auto elem : signature_)//output_.points[idx].histogram)
+      {
+        std::cout << elem << ' ';
+      }
       output_.points[idx].x = input_->points[idx].x;
       output_.points[idx].y = input_->points[idx].y;
       output_.points[idx].z = input_->points[idx].z;
+      std::cout << "output point x,y,z: " << output_.points[idx].x << ' ' << output_.points[idx].y << ' ' << output_.points[idx].z << "\n" ;
     }
 
   }
