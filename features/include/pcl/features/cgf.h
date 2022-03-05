@@ -6,6 +6,7 @@
 #include <pcl/common/impl/transforms.hpp> // need for transformPointCloud()
 #include <pcl/common/centroid.h> // demeanPointCloud()
 #include <pcl/common/eigen.h> // eigen33()
+#include <pcl/common/distances.h>
 #include <iostream>
 #include <Eigen/Dense>
 #include <fstream>
@@ -16,16 +17,23 @@
 
 namespace pcl
 {
+
   class Layer
   {
   public:
-    Layer() {} // ?? need default constructor that can be called by CGFEstimation default constructor? (via NeuralNetwork default constructor)
+    // Layer() {} // ?? need default constructor that can be called by CGFEstimation default constructor? (via NeuralNetwork default constructor)
 
     Layer(const shared_ptr<Eigen::MatrixXf>& weights, const shared_ptr<Eigen::MatrixXf>& biases)
     {
       std::cout<< "layer constructor\n";
       setWeightsAndBiases(weights, biases);
       set_activation_relu(1.0); // LATER: make possible to set from constructor
+      std::cout << "output_size_: " << output_size_ << "\n" ;
+      // output_ = Eigen::VectorXf::Zero(output_size_);
+      // output_ptr_ = make_shared<Eigen::VectorXf>(output_);
+      shared_ptr <Eigen::VectorXf> output_ptr_ (new Eigen::VectorXf);
+      *output_ptr_ = Eigen::VectorXf::Zero(output_size_);
+      // std::cout << "*output_ptr_: " << *output_ptr_ << "\n" ;
     }
 
     void
@@ -72,7 +80,10 @@ namespace pcl
     void
       applyLayer(const Eigen::VectorXf& input) // ??: inline?
     {
-      output_ = (*weights_ * input + *biases_).unaryExpr(std::ref(activation_));
+      std::cout << "Applying layer \n" ;
+      std::cout << "input: " << input << "\n" ;
+      // std::cout << "output_: " << output_ << "\n" ;
+      *output_ptr_ = (*weights_ * input + *biases_).unaryExpr(std::ref(activation_));
     }
 
     // LATER: add other typical activation functions
@@ -80,6 +91,7 @@ namespace pcl
     void
       set_activation_relu(float slope)
     {
+      std::cout << "setting activation \n" ;
       activation_name_ = "relu";
       activation_ = [slope](float x) -> float {return x > 0 ? x * slope : 0;};
     }
@@ -89,16 +101,18 @@ namespace pcl
     // {
     //   output_ = output;
     // }
-    Eigen::VectorXf*
+    // Eigen::VectorXf*
+    shared_ptr<Eigen::VectorXf>
       getOutputPtr()
     {
-      return &output_; // ?? is this bad practice?
+      return output_ptr_; // ?? is this bad practice?
     }
 
   private:
     int input_size_;
     int output_size_;
-    Eigen::VectorXf output_;
+    // Eigen::VectorXf output_;
+    std::shared_ptr<Eigen::VectorXf> output_ptr_;
     std::shared_ptr<Eigen::MatrixXf> weights_;
     std::shared_ptr<Eigen::MatrixXf> biases_;
     std::function<float(float)> activation_;
@@ -137,11 +151,15 @@ namespace pcl
     void
       applyNN(Eigen::VectorXf& input, Eigen::VectorXf& output) //?? doesn't actually modify input, not sure how to specify as const
     {
-      const Eigen::VectorXf* temp = &input; // use copy assignment instead?
+      // const Eigen::VectorXf* temp = &input; // use copy assignment instead?
+      shared_ptr<Eigen::VectorXf> temp = make_shared<Eigen::VectorXf> (input); // use copy assignment instead?
+      std::cout << "*temp: " << *temp << "\n" ;
       for (int i = 0; i < num_layers_; i++)
       {
         layers_[i].applyLayer(*temp); // ?? idk what I'm doing
-        temp = layers_[i].getOutputPtr(); // ?? shared ptr instead? 
+        std::cout << "get ptr \n" ;
+        temp = move(layers_[i].getOutputPtr()); // ?? shared ptr instead? 
+        std::cout << "*temp: " << *temp << "\n" ;
       }
       output = *temp;
     }
@@ -177,7 +195,7 @@ namespace pcl
     using Feature<PointInT, PointOutT>::getClassName;
     using Feature<PointInT, PointOutT>::indices_;
     using Feature<PointInT, PointOutT>::search_radius_;
-    // using Feature<PointInT, PointOutT>::search_parameter_;
+    using Feature<PointInT, PointOutT>::search_parameter_;
     using Feature<PointInT, PointOutT>::input_;
     using Feature<PointInT, PointOutT>::surface_;
 
@@ -222,6 +240,17 @@ namespace pcl
     void
       readMatrices(std::vector<MatPtr>& weights, std::vector<MatPtr>& biases, std::string file_str);
       // readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str);
+
+    template <typename Elem> void
+      print_arr(std::vector<Elem> arr)
+      {
+        std::cout <<'\n';
+        for (Elem elem : arr)
+        {
+          std::cout << elem << ' ';
+        }
+        std::cout << "\n" ;
+      }
 
     class UninitializedException : public std::logic_error { // ?? is this the "right" way to do this? lol
       public:

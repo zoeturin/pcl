@@ -22,12 +22,13 @@ namespace pcl {
     // For each point in the cloud
     for (auto idx : indices)
     {
+      std::cout << idx << "\n" ;
       Eigen::Vector4f pt;
       pt[0] = cloud.points[idx].x; //- centroid[0];
       pt[1] = cloud.points[idx].y; //- centroid[1];
       pt[2] = cloud.points[idx].z; //- centroid[2];
 
-      covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx);
+      covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx); // NEXT: should be index of loop or length of indices
       covariance_matrix(1, 2) += pt.y() * pt.z() * weights(idx);
       covariance_matrix(2, 2) += pt.z() * pt.z() * weights(idx);
 
@@ -36,7 +37,7 @@ namespace pcl {
       covariance_matrix(0, 1) += pt.y() * weights(idx);
       covariance_matrix(0, 2) += pt.z() * weights(idx);
     }
-
+    std::cout << "assign other entries \n" ;
     covariance_matrix(1, 0) = covariance_matrix(0, 1);
     covariance_matrix(2, 0) = covariance_matrix(0, 2);
     covariance_matrix(2, 1) = covariance_matrix(1, 2);
@@ -56,12 +57,18 @@ namespace pcl {
     // Should only mutate cov_, lrf_
     // Get weighted covariance of neighboring points
     // LATER: make this more efficient? rather than alloc new VectorXf, could loop over nn_dists and modify
-    Eigen::VectorXf weights = rRF_ - Eigen::Map<Eigen::ArrayXf>(nn_dists_RF_.data(), sizeof(nn_dists_RF_)); // Assume nn_distsRF is same length as indices
+    std::cout << "calculating LRF weights \n" ;
+    Eigen::VectorXf weights = rRF_ - Eigen::Map<Eigen::ArrayXf>(nn_dists_RF_.data(), nn_dists_RF_.size()); // Assume nn_distsRF is same length as indices
+    std::cout << "weights.size(): " << weights.size() << "\n" ; 
+    
+    std::cout << "computing covariance \n" ;
     computeWeightedCovarianceMatrix(nn_cloud_, nn_indices_RF_, cov_, weights);
     // Get eigenvectors of weighted covariance matrix
     Eigen::Vector3f eigen_values;
+    std::cout << "computing eigenvectors \n" ;
     pcl::eigen33(cov_, lrf_, eigen_values); // eigenvales in increasing order
     lrf_.colwise().reverseInPlace(); // want eigenvectors in order of decreasing eigenvalues
+    std::cout << "disambiguating \n" ;
     disambiguateRF();
   }
 
@@ -201,6 +208,14 @@ namespace pcl {
     return this->searchForNeighbors(idx, radius, nn_indices, nn_dists);
   }
 
+  // template <typename Elem> void
+  // print_arr<Elem>(std::vector<Elem> arr)
+  // {
+  //   for (Elem elem : arr)//output_.points[idx].histogram)
+  //     {
+  //       std::cout << elem << ' ';
+  //     }
+  // }
 
   template <typename PointInT, typename PointOutT> void
   pcl::CGFEstimation<PointInT, PointOutT>::computeCGFSignatures()
@@ -211,16 +226,45 @@ namespace pcl {
     {
       // NN range search 
       // ?? if nn_indices_ and nn_dists_ properly reset by calls to searchForNeighbors
-      // ?? can you prevent nn_dists_ output/allocation? don't think it's needed
-      std::size_t pt = (*indices_)[idx]; // CHECK: if searchForNeighbors uses indices[idx] or idx
+      std::size_t pt = (*indices_)[idx]; // need actual index of point of interest in cloud
       std::cout << "First nearest neighbors search \n" ;
-      this->searchForNeighbors(pt, rmax_, nn_indices_, nn_dists_); // do NN search for histogram generation (range search <rmax_)
+      std::cout << "input_->size(): " << input_->size() << "\n" ;
 
-      // ?? I think it's more efficient to run second NN search like this rather than finding all dists < rRF_ and using these indices? maybe only true if below true
-      // LATER: try to make this more efficient by only searching over smaller nn_cloud_ ? possibly would need to add idx to nn_cloud_ which might screw with some downstream stuff (eg RF generation) unless searchForNeighbors overloaded for point (rather than idx) input
-      // TODO keep pt itself from being included in histogram (inf weight?)
+      int num_nns = this->searchForNeighbors(pt, search_parameter_, nn_indices_, nn_dists_); // do NN search for histogram generation (range search <rmax_)
+      std::cout << "input->points[pt]: " << input_->points[pt] << "\n" ;
+      // for (auto pti : input_->points)
+      // {
+      //   float dist = euclideanDistance(input_->points[pt], pti);
+      //   std::cout << "pti: " << pti << " " ;
+      //   std::cout << "dist: " << dist << "\n" ;
+      // }
+      std::cout << "num_nns: " << num_nns << "\n" ;
+      std::cout << "search_parameter_: " << search_parameter_ << "\n" ;
+      // nn_cloud_.reset(); // ?? necessary before copyPointCloud? don't think so?  
+      std::cout << "Copying point cloud \n" ;
+
+      copyPointCloud(*input_, nn_indices_, nn_cloud_);
+
+      // ?? More efficient to iterate over NNs or do second NN search?
       std::cout << "Second nearest neighbors search \n" ;
-      if (this->searchForNeighbors(pt, rRF_, nn_indices_RF_, nn_dists_RF_) < 5) // fewer than 5 neighbors: can't make feature, // ??: increase?
+      nn_indices_RF_.clear();
+      nn_dists_RF_.clear();
+
+      for (int i = 0; i < nn_cloud_.size(); i++)
+      {
+        if (nn_dists_[i] < pow(rRF_,2) && nn_dists_[i] > 0)
+        {
+          nn_indices_RF_.push_back(i); // idx wrt nn_cloud_
+          nn_dists_RF_.push_back(sqrt(nn_dists_[i])); // ?? optimize by just indexing nn_dists_ later?
+        }
+      }
+
+      std::cout << "nn_cloud_.size(): " << nn_cloud_.size() << "\n" ;
+      print_arr<int>(nn_indices_RF_);
+      // print_arr<float>(nn_dists_);
+
+      // if (this->searchForNeighbors(pt, rRF_, nn_indices_RF_, nn_dists_RF_) < 5) // fewer than 5 neighbors: can't make feature, // ??: increase?
+      if (nn_indices_RF_.size() < 5) // fewer than 5 neighbors: can't make feature, // ??: increase?
       {
         std::cout << "Too few neighbors for LRF generation \n" ;
         for (Eigen::Index d = 0; d < sph_hist_.size(); ++d)
@@ -229,9 +273,7 @@ namespace pcl {
         output_.is_dense = false;
         continue;
       }
-      // nn_cloud_.reset(); // ?? necessary before copyPointCloud? don't think so?  
-      std::cout << "Copying point cloud \n" ;
-      copyPointCloud(*input_, nn_indices_, nn_cloud_);
+      
       std::cout << "Computing signature \n" ;
       computeCGFSignature(input_->points[pt]);
       std::cout << "Copying signature to output field \n" ;
