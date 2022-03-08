@@ -20,22 +20,23 @@ namespace pcl {
     
     point_count = static_cast<unsigned> (indices.size ());
     // For each point in the cloud
+    int weight_idx = 0;
     for (auto idx : indices)
     {
-      std::cout << idx << "\n" ;
       Eigen::Vector4f pt;
       pt[0] = cloud.points[idx].x; //- centroid[0];
       pt[1] = cloud.points[idx].y; //- centroid[1];
       pt[2] = cloud.points[idx].z; //- centroid[2];
 
-      covariance_matrix(1, 1) += pt.y() * pt.y() * weights(idx); // NEXT: should be index of loop or length of indices
-      covariance_matrix(1, 2) += pt.y() * pt.z() * weights(idx);
-      covariance_matrix(2, 2) += pt.z() * pt.z() * weights(idx);
+      covariance_matrix(1, 1) += pt.y() * pt.y() * weights(weight_idx);
+      covariance_matrix(1, 2) += pt.y() * pt.z() * weights(weight_idx);
+      covariance_matrix(2, 2) += pt.z() * pt.z() * weights(weight_idx);
 
       pt *= pt.x();
-      covariance_matrix(0, 0) += pt.x() * weights(idx);
-      covariance_matrix(0, 1) += pt.y() * weights(idx);
-      covariance_matrix(0, 2) += pt.z() * weights(idx);
+      covariance_matrix(0, 0) += pt.x() * weights(weight_idx);
+      covariance_matrix(0, 1) += pt.y() * weights(weight_idx);
+      covariance_matrix(0, 2) += pt.z() * weights(weight_idx);
+      weight_idx++;
     }
     std::cout << "assign other entries \n" ;
     covariance_matrix(1, 0) = covariance_matrix(0, 1);
