@@ -72,13 +72,13 @@ int test()
   // cgf_estimation.computeSphericalHistogram(pt);
   indices.reset(new std::vector<int>());
   indices->push_back(idx);
+  indices->push_back(idx+1);
   std::cout << "Created indices \n" ;
   
   ptr -> setIndices(indices);
   std::cout << "Set indices \n" ;
   // cgf_estimation.computeCGFSignatures();
   cgf_estimation.compute(*feature_cloud);
-  std::cout << "sph hist: " << cgf_estimation.sph_hist_ << "\n" ;
 
   
   return 0;

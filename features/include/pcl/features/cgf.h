@@ -21,7 +21,6 @@ namespace pcl
   class Layer
   {
   public:
-    // Layer() {} // ?? need default constructor that can be called by CGFEstimation default constructor? (via NeuralNetwork default constructor)
 
     Layer(const shared_ptr<Eigen::MatrixXf>& weights, const shared_ptr<Eigen::MatrixXf>& biases)
     {
@@ -29,11 +28,8 @@ namespace pcl
       setWeightsAndBiases(weights, biases);
       set_activation_relu(1.0); // LATER: make possible to set from constructor
       std::cout << "output_size_: " << output_size_ << "\n" ;
-      // output_ = Eigen::VectorXf::Zero(output_size_);
-      // output_ptr_ = make_shared<Eigen::VectorXf>(output_);
-      shared_ptr <Eigen::VectorXf> output_ptr_ (new Eigen::VectorXf);
-      *output_ptr_ = Eigen::VectorXf::Zero(output_size_);
-      // std::cout << "*output_ptr_: " << *output_ptr_ << "\n" ;
+      Eigen::VectorXf output = Eigen::VectorXf::Zero(output_size_);
+      output_ptr_ = make_shared<Eigen::VectorXf>(output);
     }
 
     void
@@ -54,7 +50,7 @@ namespace pcl
     void
       getWeightsAndBiases(Eigen::MatrixXf weights, Eigen::MatrixXf biases)
     {
-      weights = *weights_; // ??: transfer ownership...?
+      weights = *weights_; 
       biases = *biases_;
     }
 
@@ -78,11 +74,8 @@ namespace pcl
     // LATER: get activation
 
     void
-      applyLayer(const Eigen::VectorXf& input) // ??: inline?
+      applyLayer(const Eigen::VectorXf& input)
     {
-      std::cout << "Applying layer \n" ;
-      std::cout << "input: " << input << "\n" ;
-      // std::cout << "output_: " << output_ << "\n" ;
       *output_ptr_ = (*weights_ * input + *biases_).unaryExpr(std::ref(activation_));
     }
 
@@ -91,7 +84,6 @@ namespace pcl
     void
       set_activation_relu(float slope)
     {
-      std::cout << "setting activation \n" ;
       activation_name_ = "relu";
       activation_ = [slope](float x) -> float {return x > 0 ? x * slope : 0;};
     }
@@ -105,13 +97,12 @@ namespace pcl
     shared_ptr<Eigen::VectorXf>
       getOutputPtr()
     {
-      return output_ptr_; // ?? is this bad practice?
+      return output_ptr_; // ?? return the same pointer or move/copy to new pointer/pointer passed by ref?
     }
 
   private:
     int input_size_;
     int output_size_;
-    // Eigen::VectorXf output_;
     std::shared_ptr<Eigen::VectorXf> output_ptr_;
     std::shared_ptr<Eigen::MatrixXf> weights_;
     std::shared_ptr<Eigen::MatrixXf> biases_;
@@ -122,9 +113,8 @@ namespace pcl
   class NeuralNetwork
   {
   public:
-    NeuralNetwork() : initialized_ (false) {} // ?? need default constructor that can be called by CGFEstimation default constructor?
+    NeuralNetwork() : initialized_ (false) {} // default constructor that can be called by CGFEstimation default constructor 
 
-    // ??: want vector of shared pointers instead? not sure what Eigen does internally in terms of copying/assignment
     void
     setWeightsAndBiases(const std::vector<shared_ptr<Eigen::MatrixXf>>& weights, const std::vector<shared_ptr<Eigen::MatrixXf>>& biases)
     {
@@ -137,10 +127,11 @@ namespace pcl
         layer_sizes_.push_back(layers_.back().outputSize());
         if (i > 0 && layers_[i - 1].outputSize() != layers_[i].inputSize()) // LATER: move this code block elsewhere, eg through custom error type?
         {
-          std::ostringstream err_stream;
-          err_stream << "Output size of layer " << i - 1 << " (" << layers_[i - 1].outputSize() << " )";
-          err_stream << " does not match input size of layer " << i << " (" << layers_[i].inputSize() << " )";
-          throw std::invalid_argument(err_stream.str());
+          // std::ostringstream err_stream;
+          // err_stream << "Output size of layer " << i - 1 << " (" << layers_[i - 1].outputSize() << " )";
+          // err_stream << " does not match input size of layer " << i << " (" << layers_[i].inputSize() << " )";
+          // throw std::invalid_argument(err_stream.str());
+          throw DimensionMismatch(layers_, i);
         }
       }
       input_size_ = layers_.front().inputSize();
@@ -153,13 +144,10 @@ namespace pcl
     {
       // const Eigen::VectorXf* temp = &input; // use copy assignment instead?
       shared_ptr<Eigen::VectorXf> temp = make_shared<Eigen::VectorXf> (input); // use copy assignment instead?
-      std::cout << "*temp: " << *temp << "\n" ;
       for (int i = 0; i < num_layers_; i++)
       {
         layers_[i].applyLayer(*temp); // ?? idk what I'm doing
-        std::cout << "get ptr \n" ;
         temp = move(layers_[i].getOutputPtr()); // ?? shared ptr instead? 
-        std::cout << "*temp: " << *temp << "\n" ;
       }
       output = *temp;
     }
@@ -175,6 +163,23 @@ namespace pcl
       {
         return initialized_;
       }
+
+    class DimensionMismatch : public std::invalid_argument { // ?? is this the "right" way to do this? lol
+      public:
+        DimensionMismatch() : std::invalid_argument("Layer dimension mismatch") { }
+        DimensionMismatch(std::vector<Layer>& layers, int i) :
+        std::invalid_argument(makeErrorString(layers, i)) { }
+
+      private:
+        std::string
+          makeErrorString(std::vector<Layer>& layers, int i)
+          {
+          std::ostringstream err_stream;
+          err_stream << "Output size of layer " << i - 1 << " (" << layers[i - 1].outputSize() << " )";
+          err_stream << " does not match input size of layer " << i << " (" << layers[i].inputSize() << " )";
+          return err_stream.str();
+          }
+    };
 
     std::vector<Layer> layers_;
   private:
@@ -225,37 +230,27 @@ namespace pcl
       rmax_ = rmax;
       radiusThresholds();
 
-      // std::cout << "rmax_: " << rmax_ << "\n" ;
-      // std::cout << "rmin_: " << rmin_ << "\n" ;
       rRF_ = rRF;
       this -> setRadiusSearch(rmax_); 
 
       int N = az_div * el_div * rad_div;
       sph_hist_ = Eigen::VectorXf::Zero(N);
 
-      //Other: 
       feature_name_ = "CGFEstimation";
     }
 
     void
       readMatrices(std::vector<MatPtr>& weights, std::vector<MatPtr>& biases, std::string file_str);
-      // readMatrices(std::vector<Eigen::MatrixXf>& weights, std::vector<Eigen::MatrixXf>& biases, std::string file_str);
 
-    template <typename Elem> void
-      print_arr(std::vector<Elem> arr)
-      {
-        std::cout <<'\n';
-        for (Elem elem : arr)
-        {
-          std::cout << elem << ' ';
-        }
-        std::cout << "\n" ;
-      }
+    template <typename T, size_t N> void
+      print_arr(T (&arr)[N]);
+
+    //////////////////////////////////// Exceptions ////////////////////////////////////
 
     class UninitializedException : public std::logic_error { // ?? is this the "right" way to do this? lol
       public:
-      UninitializedException() : std::logic_error("Uninitialized exception") { }
-      UninitializedException(std::string str) : std::logic_error(str) { }
+        UninitializedException() : std::logic_error("Uninitialized exception") { }
+        UninitializedException(std::string str) : std::logic_error(str) { }
     };
 
     //////////////////////////////////// Getters and Setters ////////////////////////////////////
