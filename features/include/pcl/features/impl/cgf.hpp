@@ -187,19 +187,21 @@ namespace pcl {
   }
 
   template <typename PointInT, typename PointOutT> void
-  pcl::CGFEstimation<PointInT, PointOutT>::computeCGFSignatures()
+  pcl::CGFEstimation<PointInT, PointOutT>::computeCGFSignatures(PointCloudOut& output)
   {
     // iterate through input cloud
     // Iterate over the entire index vector
-    for (std::size_t idx = 0; idx < indices_->size(); ++idx)
+
+    // idxO: output index, idxI: input idx
+    for (std::size_t idxO = 0; idxO < indices_->size(); ++idxO) 
     {
       // NN range search 
-      std::size_t pt = (*indices_)[idx]; // need actual index of point of interest in cloud
+      std::size_t idxI = (*indices_)[idxO]; // need actual index of point of interest in cloud
       std::cout << "First nearest neighbors search \n" ;
       std::cout << "Input cloud size: " << input_->size() << "\n" ;
 
-      int num_nns = this->searchForNeighbors(pt, search_parameter_, nn_indices_, nn_dists_); // do NN search for histogram generation (range search <rmax_)
-      std::cout << "Point of interest: " << input_->points[pt] << "\n" ;
+      int num_nns = this->searchForNeighbors(idxI, search_parameter_, nn_indices_, nn_dists_); // do NN search for histogram generation (range search <rmax_)
+      std::cout << "Point of interest: " << input_->points[idxI] << "\n" ;
       std::cout << "Number of neighbors for histogram: " << num_nns << "\n" ;
       copyPointCloud(*input_, nn_indices_, nn_cloud_);
 
@@ -221,23 +223,23 @@ namespace pcl {
       {
         std::cout << "Too few neighbors for LRF generation \n" ;
         for (Eigen::Index d = 0; d < sph_hist_.size(); ++d)
-          output_.points[idx].histogram[d] = std::numeric_limits<float>::quiet_NaN();
+          output.points[idxO].histogram[d] = std::numeric_limits<float>::quiet_NaN();
 
-        output_.is_dense = false;
+        output.is_dense = false;
         continue;
       }
       
       std::cout << "Computing signature \n" ;
-      computeCGFSignature(input_->points[pt]);
+      computeCGFSignature(input_->points[idxI]);
       std::cout << "Copying signature to output field \n" ;
-      std::copy(signature_.data(), signature_.data() + signature_.size(), output_.points[idx].histogram); // histogram is preallocated
+      std::copy(signature_.data(), signature_.data() + signature_.size(), output.points[idxO].histogram); // histogram is preallocated
       std::cout << "signature: \n" ;
-      print_arr(output_.points[idx].histogram);
+      print_arr(output.points[idxO].histogram);
 
-      output_.points[idx].x = input_->points[idx].x;
-      output_.points[idx].y = input_->points[idx].y;
-      output_.points[idx].z = input_->points[idx].z;
-      std::cout << "output point x,y,z: " << output_.points[idx].x << ' ' << output_.points[idx].y << ' ' << output_.points[idx].z << "\n" ;
+      output.points[idxO].x = input_->points[idxI].x;
+      output.points[idxO].y = input_->points[idxI].y;
+      output.points[idxO].z = input_->points[idxI].z;
+      std::cout << "output point x,y,z: " << output.points[idxO].x << ' ' << output.points[idxO].y << ' ' << output.points[idxO].z << "\n" ;
     }
 
   }
@@ -249,11 +251,10 @@ namespace pcl {
       throw UninitializedException(
         "Compression weights and biases have not been set. Use setCompression() member function before feature computation.");
     std::cout << "Calling computeFeature \n" ;
-    output_ = output;
     // std::cout << "init compute: \n" ;
     // this -> initCompute ();
     std::cout << "Computing signatures \n" ;
-    computeCGFSignatures();
+    computeCGFSignatures(output);
 
   }
 

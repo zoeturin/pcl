@@ -79,7 +79,8 @@ int test()
   std::cout << "Set indices \n" ;
   // cgf_estimation.computeCGFSignatures();
   cgf_estimation.compute(*feature_cloud);
-
+  cgf_estimation.print_arr(feature_cloud->points[0].histogram);
+  std::cout << "feature_cloud->size(): " << feature_cloud->size() << "\n" ;
   
   return 0;
 }

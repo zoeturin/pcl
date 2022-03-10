@@ -352,7 +352,8 @@ namespace pcl
       *
       */
     void
-      computeCGFSignatures();
+      // computeCGFSignatures();
+      computeCGFSignatures(PointCloudOut& output);
 
     void
       computeFeature(PointCloudOut& output) override;
@@ -384,7 +385,6 @@ namespace pcl
     // Neural network compression and results temp storage
     pcl::NeuralNetwork compression_;
     Eigen::VectorXf signature_;
-    PointCloudOut output_;
   };
 }
 
