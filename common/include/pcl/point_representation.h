@@ -526,6 +526,28 @@ namespace pcl
   };
 
 
+
+  template <>
+  class DefaultPointRepresentation<CGFSignature16> : public PointRepresentation<CGFSignature16>
+  {
+    public:
+      DefaultPointRepresentation ()
+      {
+        nr_dimensions_ = 3;
+        trivial_ = true;
+      }
+
+      void
+      copyToFloatArray (const CGFSignature16 &p, float * out) const override
+      {
+        out[0] = p.x;
+        out[1] = p.y;
+        out[2] = p.z;
+        // By default, p.descriptor is not part of the CGFSignature16 vectorization
+      }
+  };
+
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /** \brief @b CustomPointRepresentation extends PointRepresentation to allow for sub-part selection on the point.
    */
@@ -577,4 +599,6 @@ namespace pcl
       /** \brief Use dimensions only starting with this one (i.e. the "k" in "k-D" is = dim - start_dim_) -- \note float fields are assumed */
       int start_dim_;
   };
+
+
 }

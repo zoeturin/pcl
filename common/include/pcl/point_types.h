@@ -306,7 +306,7 @@ namespace pcl
      */
   struct CGFSignature16;
 
-  /** \brief Members: float x, y, z, float histogram[16]
+  /** \brief Members: float x, y, z, float descriptor[16]
     * \ingroup common
     */
   using BorderTraits = std::bitset<32>;

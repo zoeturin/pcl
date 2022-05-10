@@ -17,6 +17,23 @@
 
 namespace pcl
 {
+  template <typename FeatureType>
+  struct DescriptorRepresentation : public PointRepresentation<FeatureType> // LATER: best practices?
+      {
+        // public:
+      DescriptorRepresentation ()
+      {
+        nr_dimensions_ = FeatureType::descriptorSize;
+      }
+      ~DescriptorRepresentation () {}
+
+      void
+      copyToFloatArray (const FeatureType &p, float * out) const override
+      {
+        for (int i = 0; i < nr_dimensions_; ++i)
+          out[i] = p.descriptor[i];
+      }
+      };
 
   class Layer
   {
@@ -211,14 +228,14 @@ namespace pcl
     //////////////////////////////////// Constructors ////////////////////////////////////
     // LATER: make SphericalHistogram its own class?
 
-    /** \brief Empty constructor. */
+    // /** \brief Empty constructor. */
     // CGFEstimation (): az_div_ (0), // ?? set members to zero so can check that they're properly set later?
     //                   el_div_ (0), // TODO: add checks to ensure CGFEstimation has been properly initialized
     //                   rad_div_ (0),
     //                   rmin_ (0.0),
     //                   rmax_ (0.0),
     //                   rRF_ (0.0)
-    // {} // ?? need empty constructor for PCL API?
+    // {}
 
     CGFEstimation(int az_div, int el_div, int rad_div, float rmin =.1, float rmax = 1.2, float rRF = .25)
     {
@@ -237,6 +254,7 @@ namespace pcl
       sph_hist_ = Eigen::VectorXf::Zero(N);
 
       feature_name_ = "CGFEstimation";
+      descriptor_size_ = PointOutType::descriptorSize();
     }
 
     void
@@ -254,6 +272,29 @@ namespace pcl
     };
 
     //////////////////////////////////// Getters and Setters ////////////////////////////////////
+    // =====GETTERS=====
+      //! Getter (const) for the descriptor
+    // inline const float* 
+    //   getDescriptor () const { return descriptor_;}
+    // //! Getter for the descriptor
+    // inline float* 
+    //   getDescriptor () { return descriptor_;}
+
+    //! Getter for the descriptor length
+    inline int //?? why did example return reference?
+      getDescriptorSize () { return descriptor_size_;}
+    // //! Getter (const) for the position
+    // inline const Eigen::Vector3f& 
+    //   getPosition () const { return position_;}
+    // //! Getter for the position
+    // inline Eigen::Vector3f& 
+    //   getPosition () { return position_;}
+    // //! Getter (const) for the 6DoF pose
+    // inline const Eigen::Affine3f& 
+    //   getTransformation () const { return transformation_;}
+    // //! Getter for the 6DoF pose
+    // inline Eigen::Affine3f& 
+    //   getTransformation () { return transformation_;}
 
     inline void
       getHistogramDivisions(int &az_div, int &el_div, int &rad_div)
@@ -275,19 +316,17 @@ namespace pcl
     void
       setCompression(std::string file_str)
     {
-      // std::vector<Eigen::MatrixXf> weights;
-      // std::vector<Eigen::MatrixXf> biases;
       std::vector<MatPtr> weights;
       std::vector<MatPtr> biases;
       readMatrices(weights, biases, file_str);
 
       compression_.setWeightsAndBiases(weights, biases);
       std::cout << "finished setting compression \n" ;
-      if (compression_.getOutputSize() != PointOutT::descriptorSize())
+      if (compression_.getOutputSize() != descriptor_size_)
       {
         std::ostringstream err_stream;
         err_stream << "Output size of neural network ( " << compression_.getOutputSize() << " )";
-        err_stream << " does not match dimensionality of feature ( " << PointOutT::descriptorSize() << " )";
+        err_stream << " does not match dimensionality of feature ( " << descriptor_size_ << " )";
         throw std::invalid_argument(err_stream.str());
       }
     }
@@ -358,12 +397,12 @@ namespace pcl
     void
       computeFeature(PointCloudOut& output) override;
 
-
     //////////////////////////////////// Member Variables ////////////////////////////////////
 
     // Histogram parameters:
     uint az_div_, el_div_, rad_div_;
     Eigen::VectorXf rad_thresholds_;
+    uint descriptor_size_;
     // LATER: make setter for rRF_, rmin_, rmax_
     float rmin_, rmax_; // bin range for radius, rmax_ sets nearest neighbor search range for histogram, paper: [1.5%, 17%] or [.1m, 1.2m] // TODO: set
     float rRF_; // nearest neighbor radius for LRF generation, paper: 2% of model or .25 m for LIDAR
@@ -387,4 +426,3 @@ namespace pcl
     Eigen::VectorXf signature_;
   };
 }
-

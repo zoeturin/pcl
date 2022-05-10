@@ -431,6 +431,15 @@ namespace pcl
   }
 
   std::ostream& 
+  operator << (std::ostream& os, const CGFSignature16& p)
+  {
+    os << p.x<<","<<p.y<<","<<p.z ;
+    for (int i = 0; i < 36; ++i)
+    os << (i == 0 ? "(" : "") << p.descriptor[i] << (i < 15 ? ", " : ")");
+    return (os);
+  }
+
+  std::ostream& 
   operator << (std::ostream& os, const BorderDescription& p)
   {
     os << "(" << p.x << "," << p.y << ")";

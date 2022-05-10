@@ -186,7 +186,8 @@
   (pcl::GRSDSignature21)        \
   (pcl::ESFSignature640)        \
   (pcl::BRISKSignature512)      \
-  (pcl::Narf36)
+  (pcl::Narf36)                 \
+  (pcl::CGFSignature16)
 
 
 namespace pcl
@@ -1729,7 +1730,7 @@ namespace pcl
   struct CGFSignature16
   {
     float x = 0.f, y = 0.f, z = 0.f;
-    float histogram[16] = {0.f};
+    float descriptor[16] = {0.f};
     static constexpr int descriptorSize () { return detail::traits::descriptorSize_v<CGFSignature16>; }
 
     inline CGFSignature16 () = default;
@@ -2259,7 +2260,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (pcl::GFPFHSignature16,
 )
 
 POINT_CLOUD_REGISTER_POINT_STRUCT (pcl::CGFSignature16,
-    (float[16], histogram, cgf)
+    (float[16], descriptor, cgf)
 )
 
 POINT_CLOUD_REGISTER_POINT_STRUCT (pcl::IntensityGradient,
